@@ -11,7 +11,9 @@
     "db:seed": "tsx scripts/seed.ts",
     "spike": "tsx scripts/spike-paypal.ts",
     "mcp": "tsx mcp-server/index.ts",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^1.6.0",
@@ -37,6 +39,7 @@
     "eslint-config-next": "16.4.5",
     "tailwindcss": "^4",
     "tsx": "^4.23.15",
-    "typescript": "^5"
+    "typescript": "^5",
+    "vitest": "^3.2.7"
   }
 }
