@@ -11,7 +11,7 @@
     "db:seed": "tsx scripts/seed.ts",
     "spike": "tsx scripts/spike-paypal.ts",
     "mcp": "tsx mcp-server/index.ts",
-    "typecheck": "tsc --noEmit",
+    "typecheck": "next typegen && tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
     "db:migrate": "tsx scripts/migrate.ts",
