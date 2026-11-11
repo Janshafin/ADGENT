@@ -22,6 +22,7 @@ export type PayoutItem = { email: string; cents: number; note: string; senderIte
 export type PayoutBatch = { batch_header: { payout_batch_id: string; batch_status: string } };
 
 export function sendPayouts(batchId: string, items: PayoutItem[]): Promise<PayoutBatch> {
+  if (!items.length) throw new RangeError("A payout batch needs at least one item");
   return paypal<PayoutBatch>("/v1/payments/payouts", {
     method: "POST",
     idempotencyKey: batchId,
@@ -113,9 +114,12 @@ export function searchTransactions(fromIso: string, toIso: string): Promise<TxSe
 
 // ── Webhook signature verification ─────────────────────────────────────────
 
-export async function verifyWebhook(headers: Headers, rawBody: string): Promise<boolean> {
+export async function verifyWebhook(headers: Headers, event: unknown): Promise<boolean> {
   const webhookId = env().PAYPAL_WEBHOOK_ID;
   if (!webhookId) return false;
+  for (const h of ["paypal-auth-algo", "paypal-cert-url", "paypal-transmission-id", "paypal-transmission-sig", "paypal-transmission-time"]) {
+    if (!headers.get(h)) return false;
+  }
   const res = await paypal<{ verification_status: string }>("/v1/notifications/verify-webhook-signature", {
     method: "POST",
     body: {
@@ -125,7 +129,7 @@ export async function verifyWebhook(headers: Headers, rawBody: string): Promise<
       transmission_sig: headers.get("paypal-transmission-sig"),
       transmission_time: headers.get("paypal-transmission-time"),
       webhook_id: webhookId,
-      webhook_event: JSON.parse(rawBody),
+      webhook_event: event,
     },
   });
   return res.verification_status === "SUCCESS";

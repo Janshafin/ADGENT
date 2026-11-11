@@ -44,9 +44,9 @@ function ShopOffer({ params }: { params: Promise<{ offerId: string }> }) {
     <Centered>
       <div className="card grid w-full max-w-4xl gap-8 p-6 sm:p-8 md:grid-cols-[1fr_340px]">
         <div>
-          <span className="pill">Sponsored · {offer.merchant.name} pays a fee only if you buy</span>
+          <span className="chip chip-sponsored">Sponsored</span> <span className="meta">{offer.merchant.name} pays an ad fee only if you buy</span>
           <div className="mt-6 grid h-48 place-items-center rounded-2xl bg-panel-2 text-8xl" aria-hidden>{offer.product.image}</div>
-          <p className="mt-6 text-sm text-muted">{offer.merchant.emoji} {offer.merchant.name}</p>
+          <p className="mt-6 text-sm text-muted">{offer.merchant.name}</p>
           <h1 className="mt-1 text-2xl font-semibold tracking-tight">{offer.product.title}</h1>
           <p className="mt-2 text-muted">{offer.product.description}</p>
           <div className="mt-4 flex items-baseline gap-3">
@@ -54,7 +54,7 @@ function ShopOffer({ params }: { params: Promise<{ offerId: string }> }) {
             {offer.discountPct > 0 && (
               <>
                 <span className="text-muted line-through">{fmtCents(offer.product.priceCents)}</span>
-                <span className="pill text-good">{offer.discountPct}% off</span>
+                <span className="text-sm font-medium text-good">{offer.discountPct}% off</span>
               </>
             )}
           </div>
@@ -64,10 +64,10 @@ function ShopOffer({ params }: { params: Promise<{ offerId: string }> }) {
         <div className="flex flex-col justify-center">
           {paid ? (
             <div className="rounded-2xl border border-good/40 bg-good/10 p-6 text-center">
-              <div className="text-4xl">✅</div>
+              <Check />
               <h2 className="mt-2 text-lg font-semibold">Paid with PayPal</h2>
               <p className="mt-1 text-sm text-muted">Capture {paid.captureId}</p>
-              <Link href="/control" className="btn btn-ghost mt-4">See it in Mission Control →</Link>
+              <Link href="/control" className="btn btn-quiet mt-5">See it in Mission Control</Link>
             </div>
           ) : !offer.active ? (
             <p className="text-sm text-muted">This offer has ended.</p>
@@ -81,10 +81,19 @@ function ShopOffer({ params }: { params: Promise<{ offerId: string }> }) {
               onPaid={setPaid}
             />
           )}
-          <p className="mt-4 text-center text-xs text-muted">Protected by PayPal Purchase Protection. Sandbox mode.</p>
+          <p className="mt-4 text-center text-xs text-muted">Eligible purchases are covered by PayPal Purchase Protection.</p>
         </div>
       </div>
     </Centered>
+  );
+}
+
+function Check() {
+  return (
+    <svg width="44" height="44" viewBox="0 0 44 44" className="mx-auto" aria-hidden>
+      <circle cx="22" cy="22" r="22" fill="var(--good)" />
+      <path d="M13 22.5l6 6 12-13" fill="none" stroke="#fff" strokeWidth="3.2" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
   );
 }
 

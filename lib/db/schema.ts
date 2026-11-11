@@ -2,6 +2,16 @@ import { sqliteTable, text, integer, real, index } from "drizzle-orm/sqlite-core
 
 /** All money is stored as integer cents (USD). */
 
+/**
+ * How ADGENT gets paid:
+ *  payouts       → ADGENT is the payee; after the refund hold, PayPal Payouts sends the merchant its net and the publisher its share
+ *  platform_fees → merchant is the payee; PayPal splits the ad fee out at capture (needs a PayPal-enabled partner app)
+ *  invoice       → merchant is the payee; ad fees are billed afterwards with the PayPal Invoicing API
+ */
+export const FEE_MODES = ["payouts", "platform_fees", "invoice"] as const;
+export type FeeMode = (typeof FEE_MODES)[number];
+export const ORDER_STATUSES = ["created", "captured", "settled", "refunded", "failed"] as const;
+
 export const merchants = sqliteTable("merchants", {
   id: text("id").primaryKey(),
   name: text("name").notNull(),
@@ -125,25 +135,32 @@ export const orders = sqliteTable(
     discountCents: integer("discount_cents").notNull(),
     feeCents: integer("fee_cents").notNull(),
     publisherShareCents: integer("publisher_share_cents").notNull(),
-    feeMode: text("fee_mode", { enum: ["platform_fees", "invoice"] }).notNull(),
-    status: text("status", {
-      enum: ["created", "captured", "refunded", "failed"],
-    }).notNull(),
+    /** Merchant's share of the sale after the ad fee (paid out by ADGENT in "payouts" mode). */
+    merchantNetCents: integer("merchant_net_cents").notNull().default(0),
+    feeMode: text("fee_mode", { enum: FEE_MODES }).notNull(),
+    /** created → captured → settled (payouts sent) | refunded | failed */
+    status: text("status", { enum: ORDER_STATUSES }).notNull(),
     captureId: text("capture_id"),
     payerEmail: text("payer_email"),
     createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull(),
     capturedAt: integer("captured_at", { mode: "timestamp_ms" }),
-    /** Set once the publisher's revenue share went out in a PayPal Payouts batch */
+    /** PayPal Payouts batch that settled this order (merchant net and/or publisher share) */
     payoutId: text("payout_id"),
+    settledAt: integer("settled_at", { mode: "timestamp_ms" }),
+    refundId: text("refund_id"),
     /** Set once the ad fee was billed on a PayPal invoice (invoice fee mode) */
     invoiceId: text("invoice_id"),
   },
-  (t) => [index("orders_campaign_idx").on(t.campaignId)],
+  (t) => [index("orders_campaign_idx").on(t.campaignId), index("orders_status_idx").on(t.status), index("orders_capture_idx").on(t.captureId)],
 );
 
+/** One row per recipient in a PayPal Payouts batch. */
 export const payouts = sqliteTable("payouts", {
   id: text("id").primaryKey(),
-  publisherId: text("publisher_id").notNull().references(() => publishers.id),
+  kind: text("kind", { enum: ["merchant", "publisher"] }).notNull().default("publisher"),
+  publisherId: text("publisher_id").references(() => publishers.id),
+  merchantId: text("merchant_id").references(() => merchants.id),
+  receiver: text("receiver").notNull().default(""),
   batchId: text("batch_id"),
   amountCents: integer("amount_cents").notNull(),
   status: text("status").notNull(),
@@ -170,7 +187,8 @@ export type EventType =
   | "fee_collected"
   | "payout_sent"
   | "refunded"
-  | "invoice_sent";
+  | "invoice_sent"
+  | "guardian";
 
 /** Append-only attribution ledger. Everything the Mission Control grid shows. */
 export const events = sqliteTable(
@@ -191,6 +209,21 @@ export const events = sqliteTable(
   },
   (t) => [index("events_ts_idx").on(t.ts), index("events_campaign_idx").on(t.campaignId)],
 );
+
+/** PayPal webhook ids we already processed: PayPal retries, so every delivery must be applied once. */
+export const webhookEvents = sqliteTable("webhook_events", {
+  id: text("id").primaryKey(),
+  type: text("type").notNull(),
+  receivedAt: integer("received_at", { mode: "timestamp_ms" }).notNull(),
+});
+
+/** State of the built-in PayPal simulator, used only when no sandbox credentials are configured. */
+export const simObjects = sqliteTable("sim_objects", {
+  id: text("id").primaryKey(),
+  kind: text("kind").notNull(),
+  data: text("data", { mode: "json" }).$type<Record<string, unknown>>().notNull(),
+  createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull(),
+});
 
 export type Merchant = typeof merchants.$inferSelect;
 export type Product = typeof products.$inferSelect;

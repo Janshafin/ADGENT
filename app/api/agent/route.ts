@@ -1,8 +1,8 @@
 import type Anthropic from "@anthropic-ai/sdk";
 import { z } from "zod";
 import { shopperTurn } from "@/lib/ai/shopper";
-import { aiConfigured } from "@/lib/env";
 import { baseUrl, body, fail } from "@/lib/http";
+import { rateLimit } from "@/lib/http/rate-limit";
 
 const Turn = z.object({
   history: z.array(z.any()).max(80),
@@ -12,10 +12,11 @@ const Turn = z.object({
 
 export async function POST(req: Request) {
   try {
-    if (!aiConfigured()) return Response.json({ error: "Set ANTHROPIC_API_KEY to use the shopping agent" }, { status: 503 });
+    rateLimit(req, "agent", 20);
     const t = await body(req, Turn);
+    if (JSON.stringify(t.history).length > 120_000) return Response.json({ error: "This conversation is too long. Start a new shopper." }, { status: 413 });
     const out = await shopperTurn({
-      history: t.history as Anthropic.MessageParam[],
+      history: t.history as Anthropic.Beta.BetaMessageParam[],
       userText: t.text,
       shopperRef: t.shopperRef,
       baseUrl: baseUrl(req),

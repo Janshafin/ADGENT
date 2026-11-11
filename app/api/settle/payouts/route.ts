@@ -1,9 +1,12 @@
-import { payPublishers } from "@/lib/adgent/settlement";
+import { settleDue } from "@/lib/adgent/settlement";
+import { requireAdmin } from "@/lib/auth/admin";
 import { fail } from "@/lib/http";
 
-export async function POST() {
+/** "Settle now": pays out every sale whose refund hold has passed. The worker also runs this on a timer. */
+export async function POST(req: Request) {
   try {
-    return Response.json(await payPublishers());
+    requireAdmin(req);
+    return Response.json(await settleDue());
   } catch (err) {
     return fail(err);
   }

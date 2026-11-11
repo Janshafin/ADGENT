@@ -112,8 +112,9 @@ function guardianAdvice(share: number | null, exposed: number, holdout: number, 
  */
 export async function paypalEconomics() {
   const d = db();
-  const [orders, evs] = await Promise.all([d.select().from(schema.orders), d.select().from(schema.events)]);
-  const captured = orders.filter((o) => o.status === "captured");
+  const [orders, evs, payouts] = await Promise.all([d.select().from(schema.orders), d.select().from(schema.events), d.select().from(schema.payouts)]);
+  // A sale counts once PayPal captured it, whether or not its payouts went out yet.
+  const captured = orders.filter((o) => o.status === "captured" || o.status === "settled");
   const tpv = captured.reduce((a, o) => a + o.grossCents - o.discountCents, 0) / 100;
   const adFees = captured.reduce((a, o) => a + o.feeCents, 0) / 100;
   const pubShare = captured.reduce((a, o) => a + o.publisherShareCents, 0) / 100;
@@ -132,5 +133,10 @@ export async function paypalEconomics() {
     totalPaypalRevenue: +(adFees - pubShare + processing).toFixed(2),
     perAdDollar: adFees > 0 ? +((adFees - pubShare + processing) / adFees).toFixed(2) : 0,
     allTimeAdFees: +histFees.toFixed(2),
+    settledSales: orders.filter((o) => o.status === "settled").length,
+    awaitingPayout: orders.filter((o) => o.status === "captured").length,
+    refundedSales: orders.filter((o) => o.status === "refunded").length,
+    merchantPayoutsPaid: +(payouts.filter((p) => p.kind === "merchant").reduce((a, p) => a + p.amountCents, 0) / 100).toFixed(2),
+    publisherPayoutsPaid: +(payouts.filter((p) => p.kind === "publisher").reduce((a, p) => a + p.amountCents, 0) / 100).toFixed(2),
   };
 }

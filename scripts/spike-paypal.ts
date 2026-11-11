@@ -4,16 +4,16 @@
  *   npm run spike
  *
  * 1. OAuth with the app credentials
- * 2. Create an order with a discount line, a custom_id and a payee (to the merchant)
+ * 2. Create orders in payouts mode (ADGENT is payee) and with the merchant as payee
  * 3. Same order with platform_fees, to see whether your app has Multiparty enabled
  * 4. Payouts API access
  * 5. Invoicing API access
  * 6. Transaction Search access
  */
 import "dotenv/config";
-import { createAdOrder, approveLink } from "../lib/paypal/orders";
+import { createAdOrder, approveLink, buildAdOrderBody } from "../lib/paypal/orders";
 import { paypal, PayPalError } from "../lib/paypal/client";
-import { env } from "../lib/env";
+import { env, paypalConfigured } from "../lib/env";
 
 type Result = { step: string; ok: boolean; note: string };
 const results: Result[] = [];
@@ -28,6 +28,10 @@ async function step(name: string, fn: () => Promise<string>) {
 }
 
 async function main() {
+  if (!paypalConfigured()) {
+    console.error("Set PAYPAL_CLIENT_ID and PAYPAL_CLIENT_SECRET in .env first. Without them ADGENT uses its built-in simulator, which this spike must not test.");
+    process.exit(1);
+  }
   const e = env();
   const payee = { email: e.DEMO_MERCHANT_PAYPAL_EMAIL || undefined, merchantId: e.DEMO_MERCHANT_PAYPAL_ID || undefined };
   const base = {
@@ -45,35 +49,22 @@ async function main() {
     return "token issued";
   });
 
-  await step("order (discount + custom_id + payee)", async () => {
-    process.env.ADGENT_FEE_MODE = "invoice";
-    const o = await createAdOrder({ ...base, platformFeeCents: 0, idempotencyKey: `spike-a-${Date.now()}` });
+  await step("order, payouts mode (ADGENT is payee)", async () => {
+    const o = await createAdOrder({ ...base, feeMode: "payouts", platformFeeCents: 0, idempotencyKey: `spike-p-${Date.now()}` });
+    return `${o.id} ${o.status} approve: ${approveLink(o)}`;
+  });
+
+  await step("order, merchant as payee (invoice mode)", async () => {
+    const o = await createAdOrder({ ...base, feeMode: "invoice", platformFeeCents: 0, idempotencyKey: `spike-a-${Date.now()}` });
     return `${o.id} ${o.status} approve: ${approveLink(o)}`;
   });
 
   await step("order with platform_fees (Multiparty)", async () => {
-    const saved = process.env.ADGENT_FEE_MODE;
-    process.env.ADGENT_FEE_MODE = "platform_fees";
-    // env() is cached, so build the order body by hand for this probe
     const o = await paypal<{ id: string; status: string }>("/v2/checkout/orders", {
       method: "POST",
       idempotencyKey: `spike-b-${Date.now()}`,
-      body: {
-        intent: "CAPTURE",
-        purchase_units: [
-          {
-            custom_id: "adg|c_spike|agent|pub_agentnet",
-            amount: { currency_code: "USD", value: "17.09" },
-            ...(payee.merchantId ? { payee: { merchant_id: payee.merchantId } } : payee.email ? { payee: { email_address: payee.email } } : {}),
-            payment_instruction: {
-              disbursement_mode: "INSTANT",
-              platform_fees: [{ amount: { currency_code: "USD", value: "1.71" } }],
-            },
-          },
-        ],
-      },
+      body: buildAdOrderBody({ ...base, feeMode: "platform_fees", platformFeeCents: 171, idempotencyKey: "unused" }, e.APP_URL, e.PAYPAL_PLATFORM_MERCHANT_ID),
     });
-    process.env.ADGENT_FEE_MODE = saved;
     return `${o.id} ${o.status}. platform_fees accepted at create time; capture one to confirm the split`;
   });
 
@@ -105,10 +96,13 @@ async function main() {
   console.log("\nADGENT × PayPal sandbox spike\n");
   for (const r of results) console.log(`${r.ok ? "✅" : "❌"} ${r.step}\n   ${r.note}\n`);
   const pf = results.find((r) => r.step.includes("platform_fees"));
+  const po = results.find((r) => r.step === "payouts access");
   console.log(
-    pf?.ok
-      ? "→ platform_fees works. Set ADGENT_FEE_MODE=platform_fees"
-      : "→ platform_fees unavailable. Keep ADGENT_FEE_MODE=invoice (fees are billed through the PayPal Invoicing API)",
+    po?.ok
+      ? "→ Payouts works. Keep ADGENT_FEE_MODE=payouts (default): ADGENT takes the sale and pays merchant + publisher after the refund hold."
+      : pf?.ok
+        ? "→ Payouts is off but platform_fees works. Set ADGENT_FEE_MODE=platform_fees"
+        : "→ Neither Payouts nor platform_fees is enabled. Set ADGENT_FEE_MODE=invoice (fees billed with the PayPal Invoicing API).",
   );
 }
 

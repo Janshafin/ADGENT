@@ -1,0 +1,43 @@
+# Render blueprint: one always-on Node web service. The settlement worker runs in-process,
+# and Server-Sent Events need a long-lived server, which is why this isn't serverless.
+# Deploy: Render dashboard → New → Blueprint → pick this repo. Add secrets in the dashboard.
+services:
+  - type: web
+    name: adgent
+    runtime: node
+    plan: starter # always on, so judges never hit a cold start
+    region: oregon
+    buildCommand: npm ci --include=dev && npm run build
+    startCommand: npm run start:prod
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_VERSION
+        value: "24"
+      - key: NODE_ENV
+        value: production
+      - key: ADGENT_FEE_MODE
+        value: payouts
+      - key: SETTLEMENT_HOLD_SECONDS
+        value: "120"
+      - key: PAYPAL_API_BASE
+        value: https://api-m.sandbox.paypal.com
+      # Use Turso (libsql://...) so data survives deploys; a file: URL resets on every deploy and is reseeded.
+      - key: DATABASE_URL
+        sync: false
+      - key: DATABASE_AUTH_TOKEN
+        sync: false
+      - key: APP_URL
+        sync: false
+      - key: ADMIN_TOKEN
+        generateValue: true
+      # Optional: without these the app runs on the labelled PayPal simulator and the offline agent.
+      - key: PAYPAL_CLIENT_ID
+        sync: false
+      - key: PAYPAL_CLIENT_SECRET
+        sync: false
+      - key: NEXT_PUBLIC_PAYPAL_CLIENT_ID
+        sync: false
+      - key: PAYPAL_WEBHOOK_ID
+        sync: false
+      - key: ANTHROPIC_API_KEY
+        sync: false

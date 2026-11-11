@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import type Anthropic from "@anthropic-ai/sdk";
-import { api, fmtCents } from "@/lib/client/api";
+import { api, fmtCents, useStatus } from "@/lib/client/api";
 import type { UiEvent } from "@/lib/ai/shopper";
 import { PayPalCheckout } from "@/components/PayPalCheckout";
 
@@ -18,7 +18,8 @@ function newShopperRef() {
 }
 
 export default function AgentDemo() {
-  const [history, setHistory] = useState<Anthropic.MessageParam[]>([]);
+  const [history, setHistory] = useState<Anthropic.Beta.BetaMessageParam[]>([]);
+  const status = useStatus();
   const [bubbles, setBubbles] = useState<Bubble[]>([
     { role: "assistant", text: "Hi! I'm your AI shopping assistant. Tell me what you're looking for." },
   ]);
@@ -38,7 +39,9 @@ export default function AgentDemo() {
     setShopperRef(ref);
   }, []);
 
-  useEffect(() => endRef.current?.scrollIntoView({ behavior: "smooth", block: "end" }), [bubbles, busy]);
+  useEffect(() => {
+    endRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
+  }, [bubbles, busy]);
 
   async function send(text: string) {
     if (!text.trim() || busy) return;
@@ -46,13 +49,14 @@ export default function AgentDemo() {
     setBubbles((b) => [...b, { role: "user", text }]);
     setBusy(true);
     try {
-      const r = await api<{ appended: Anthropic.MessageParam[]; reply: string; ui: UiEvent[] }>("/api/agent", {
+      const r = await api<{ appended: Anthropic.Beta.BetaMessageParam[]; reply: string; ui: UiEvent[] }>("/api/agent", {
         json: { history, text, shopperRef },
       });
       setHistory((h) => [...h, ...r.appended]);
-      setBubbles((b) => [...b, ...r.ui.map((event) => ({ role: "ui" as const, event })), ...(r.reply ? [{ role: "assistant" as const, text: r.reply }] : [])]);
+      // The reply introduces the cards ("approve it below"), so it comes first.
+      setBubbles((b) => [...b, ...(r.reply ? [{ role: "assistant" as const, text: r.reply }] : []), ...r.ui.map((event) => ({ role: "ui" as const, event }))]);
     } catch (e) {
-      setBubbles((b) => [...b, { role: "assistant", text: `⚠ ${(e as Error).message}` }]);
+      setBubbles((b) => [...b, { role: "assistant", text: `Something went wrong: ${(e as Error).message}` }]);
     } finally {
       setBusy(false);
     }
@@ -69,13 +73,15 @@ export default function AgentDemo() {
 
   return (
     <div className="mx-auto grid max-w-6xl gap-6 px-4 py-8 sm:px-6 lg:grid-cols-[1fr_300px]">
-      <section className="card flex h-[calc(100vh-140px)] min-h-[520px] flex-col overflow-hidden">
+      <section className="card flex h-[calc(100dvh-200px)] min-h-[480px] flex-col overflow-hidden">
         <header className="flex items-center justify-between border-b border-line px-5 py-3">
           <div>
-            <h1 className="font-semibold">AI Shopping Agent</h1>
-            <p className="text-xs text-muted">Claude, using ADGENT sponsored offers and PayPal checkout</p>
+            <h1 className="text-lg font-semibold tracking-tight">Shop with AI</h1>
+            <p className="text-xs text-muted">
+              {status === null ? "Connecting…" : status.ai ? `Claude (${status.model}) with ADGENT sponsored offers and PayPal checkout` : "Offline mode: rule-based agent using the same offers and checkout (no Claude key)"}
+            </p>
           </div>
-          <button className="btn btn-ghost text-xs" onClick={reset}>New shopper</button>
+          <button type="button" className="btn btn-ghost flex-none whitespace-nowrap text-xs" onClick={reset}>New shopper</button>
         </header>
 
         <div className="flex-1 space-y-4 overflow-y-auto p-5" aria-live="polite">
@@ -116,7 +122,7 @@ export default function AgentDemo() {
             <li>Offers are labelled <b className="text-text">Sponsored</b>. A 10% holdout of shoppers never sees them, so lift is measurable.</li>
             <li>You approve on PayPal. Capture triggers the ad fee and the publisher&apos;s revenue share.</li>
           </ol>
-          <Link href="/control" className="btn btn-ghost mt-4 w-full justify-center">Watch it in Mission Control →</Link>
+          <Link href="/control" className="btn btn-quiet mt-5 w-full">Watch it in Mission Control</Link>
         </div>
         <div className="card p-5">
           <h2 className="font-semibold">Use it from Claude Desktop</h2>
@@ -140,8 +146,8 @@ function UiCard({ event, shopperRef, paid, onPaid }: { event: UiEvent; shopperRe
         {event.offers.map((o) => (
           <div key={o.offerId} className="rounded-2xl border border-line bg-panel-2 p-4">
             <div className="flex items-center justify-between">
-              <span className="pill text-gold">Sponsored</span>
-              <span className="text-xs text-muted">{o.merchant}</span>
+              <span className="chip chip-sponsored">Sponsored</span>
+              <span className="meta">{o.merchant}</span>
             </div>
             <div className="mt-3 flex gap-3">
               <div className="grid h-14 w-14 flex-none place-items-center rounded-xl bg-bg text-3xl" aria-hidden>{o.image}</div>
@@ -154,7 +160,10 @@ function UiCard({ event, shopperRef, paid, onPaid }: { event: UiEvent; shopperRe
                 {o.payLaterText && <div className="mt-1 text-xs text-pp-sky">{o.payLaterText}</div>}
               </div>
             </div>
-            <p className="mt-2 text-xs text-muted">{o.reason}</p>
+            <details className="mt-2 text-xs text-muted">
+              <summary className="cursor-pointer select-none">Why am I seeing this?</summary>
+              <p className="mt-1">{o.disclosure}. Ranked by relevance to your request first, then bid and merchant trust. {o.reason}.</p>
+            </details>
           </div>
         ))}
       </div>
@@ -166,7 +175,7 @@ function UiCard({ event, shopperRef, paid, onPaid }: { event: UiEvent; shopperRe
       <div className="mt-1 text-xs text-muted">Order {event.orderId}</div>
       <div className="mt-3">
         {paid ? (
-          <div className="rounded-xl bg-good/15 p-3 text-sm text-good">✓ Paid · capture {paid}</div>
+          <div className="rounded-xl bg-good/10 p-3 text-sm text-good">Paid with PayPal. Capture {paid}</div>
         ) : (
           <PayPalCheckout
             offerId={event.offerId}

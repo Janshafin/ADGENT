@@ -3,11 +3,14 @@
  * ~6 months of purchases with realistic repeat cycles and cross-merchant affinity,
  * plus two historical campaigns so Mission Control has context on first load.
  *
- * Usage: npm run db:seed   (idempotent — wipes and recreates demo data)
+ * Usage: npm run db:seed              (wipes and recreates demo data)
+ *        npm run db:seed -- --if-empty (seeds only a fresh database; used on deploy)
+ * Refuses to run with NODE_ENV=production unless ALLOW_SEED=1, so it can't wipe a live database by accident.
  */
 import "dotenv/config";
 import { db, schema } from "../lib/db";
-import { SEED_MERCHANTS, AFFINITY, SEED_PUBLISHERS } from "../lib/graph/catalog";
+import { SEED_MERCHANTS, AFFINITY, SEED_PUBLISHERS, SEED_LIVE_CAMPAIGNS } from "../lib/graph/catalog";
+import { merchantInsights } from "../lib/graph/audiences";
 import { DAY, rng, bucket } from "../lib/util";
 
 const FIRST = ["Ava", "Liam", "Maya", "Noah", "Zara", "Ethan", "Priya", "Lucas", "Mia", "Omar", "Chloe", "Arjun", "Sofia", "Leo", "Aisha", "Kai", "Nina", "Ravi", "Emma", "Jonah", "Ines", "Yuki", "Sam", "Lena"];
@@ -16,12 +19,22 @@ const CITIES = ["Austin", "Seattle", "Brooklyn", "Denver", "Chicago", "Portland"
 
 async function main() {
   const d = db();
+  // --if-empty: seed a fresh deployment, never touch one that already has data. Safe in production.
+  if (process.argv.includes("--if-empty")) {
+    const existing = await d.select({ id: schema.merchants.id }).from(schema.merchants).limit(1);
+    if (existing.length) {
+      console.log("Database already has data; not seeding.");
+      return;
+    }
+  } else if (process.env.NODE_ENV === "production" && process.env.ALLOW_SEED !== "1") {
+    throw new Error("Refusing to wipe a production database. Set ALLOW_SEED=1 if you really mean it.");
+  }
   const r = rng(20261108);
   const now = Date.now();
   const pick = <T,>(xs: T[]) => xs[Math.floor(r() * xs.length)];
 
   // wipe (children first)
-  for (const t of [schema.events, schema.adInvoices, schema.payouts, schema.orders, schema.campaigns, schema.transactions, schema.products, schema.buyers, schema.publishers, schema.merchants]) {
+  for (const t of [schema.events, schema.webhookEvents, schema.simObjects, schema.adInvoices, schema.payouts, schema.orders, schema.campaigns, schema.transactions, schema.products, schema.buyers, schema.publishers, schema.merchants]) {
     await d.delete(t);
   }
 
@@ -33,7 +46,8 @@ async function main() {
       category: m.category,
       emoji: m.emoji,
       // The hero merchant receives real sandbox payments.
-      paypalEmail: i === 0 ? env.DEMO_MERCHANT_PAYPAL_EMAIL || null : null,
+      // The hero merchant can be a real sandbox account; the others get payout addresses PayPal sandbox accepts as unclaimed.
+      paypalEmail: i === 0 ? env.DEMO_MERCHANT_PAYPAL_EMAIL || `${m.id.replace(/^m_/, "")}@merchant.adgent.example` : `${m.id.replace(/^m_/, "")}@merchant.adgent.example`,
       paypalMerchantId: i === 0 ? env.DEMO_MERCHANT_PAYPAL_ID || null : null,
       trustScore: [0.97, 0.94, 0.91, 0.89, 0.93][i],
     })),
@@ -53,7 +67,7 @@ async function main() {
     ),
   );
   await d.insert(schema.publishers).values(
-    SEED_PUBLISHERS.map((p) => ({ ...p, paypalEmail: env.DEMO_PUBLISHER_PAYPAL_EMAIL || "publisher@example.com" })),
+    SEED_PUBLISHERS.map((p) => ({ ...p, paypalEmail: env.DEMO_PUBLISHER_PAYPAL_EMAIL || `${p.id.replace(/^pub_/, "")}@publisher.adgent.example` })),
   );
 
   // Buyers
@@ -165,7 +179,40 @@ async function main() {
   evs.sort((a, b) => a.ts.getTime() - b.ts.getTime());
   for (let i = 0; i < evs.length; i += 400) await d.insert(schema.events).values(evs.slice(i, i + 400));
 
-  console.log(`Seeded ${SEED_MERCHANTS.length} merchants, ${buyers.length} buyers, ${txs.length} transactions, ${evs.length} historical events.`);
+  // Live campaigns: no history, launched now, so agents and the widget have offers on first visit.
+  for (const lc of SEED_LIVE_CAMPAIGNS) {
+    const insights = await merchantInsights(lc.merchantId, now);
+    const audience = lc.audience.map((k) => insights.audiences.find((a) => a.key === k)).find(Boolean) ?? insights.audiences[0];
+    const lead = SEED_MERCHANTS.flatMap((m) => m.products).find((p) => p.id === lc.products[0])!;
+    const net = Math.round(lead.price * (1 - lc.discount / 100));
+    const expectedSales = Math.max(3, Math.round((audience?.size ?? 50) * 0.06));
+    await d.insert(schema.campaigns).values({
+      id: lc.id,
+      merchantId: lc.merchantId,
+      name: lc.name,
+      objective: lc.objective,
+      audienceKey: audience?.key ?? "high_ltv",
+      audienceSize: audience?.size ?? 0,
+      audienceBuyerIds: audience?.buyerIds ?? [],
+      productIds: [...lc.products],
+      discountPct: lc.discount,
+      payLater: true,
+      feeRate: lc.fee,
+      budgetCents: 50_000,
+      spentCents: 0,
+      holdoutPct: 10,
+      headline: lc.headline,
+      body: lead.description,
+      agentBlurb: `${lead.description}${lc.discount ? ` ${lc.discount}% off.` : ""}`,
+      rationale: "Seeded live campaign so the demo has offers before anyone launches one.",
+      forecast: { reach: audience?.size ?? 0, expectedSales, expectedRevenueCents: expectedSales * net, expectedAdCostCents: Math.round(expectedSales * net * lc.fee), expectedRoas: +(1 / lc.fee).toFixed(1) },
+      status: "active",
+      createdAt: new Date(now),
+    });
+    await d.insert(schema.events).values({ ts: new Date(now), type: "campaign_launched", campaignId: lc.id, merchantId: lc.merchantId, detail: `${audience?.size ?? 0} buyers · ${lc.discount}% off · ${Math.round(lc.fee * 100)}% pay-per-sale · 10% holdout` });
+  }
+
+  console.log(`Seeded ${SEED_MERCHANTS.length} merchants, ${buyers.length} buyers, ${txs.length} transactions, ${evs.length} historical events, ${SEED_LIVE_CAMPAIGNS.length} live campaigns.`);
 }
 
 main().then(() => process.exit(0), (e) => { console.error(e); process.exit(1); });

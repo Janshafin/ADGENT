@@ -13,7 +13,7 @@ const Proposal = z.object({
   discountPct: z.number().int().min(0).max(30),
   payLater: z.boolean().describe("Promote PayPal Pay Later (Pay in 4) on the offer"),
   feeRate: z.number().min(0.04).max(0.2).describe("Pay-per-sale ad fee as a fraction of the sale"),
-  budgetCents: z.number().int().min(5000).max(500000),
+  budgetCents: z.number().int().min(5000).max(100000).describe("Campaign budget in cents; $50 to $1,000 for this demo"),
   headline: z.string().max(60),
   body: z.string().max(180),
   agentBlurb: z
@@ -84,8 +84,8 @@ function heuristicProposals(insights: MerchantInsights, products: Product[]): z.
       feeRate: p.feeRate!,
       budgetCents: 25000,
       headline: p.headline!,
-      body: `${prod.title} — ${prod.description}`.slice(0, 180),
-      agentBlurb: `${prod.title} (${usd(prod.priceCents)}): ${prod.description}`.slice(0, 300),
+      body: prod.description.slice(0, 180),
+      agentBlurb: `${prod.description}${p.discountPct ? ` ${p.discountPct}% off for this audience.` : ""}${prod.priceCents >= 3000 ? " Pay in 4 available with PayPal." : ""}`.slice(0, 300),
       rationale: `${a.size} buyers in "${a.label}" with avg LTV ${usd(a.avgLtvCents)}. ${a.description}`,
       expectedLiftPct: a.key === "lapsed" ? 120 : 60,
     });

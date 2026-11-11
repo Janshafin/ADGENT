@@ -1,4 +1,5 @@
 import { env } from "../env";
+import type { FeeMode } from "../db/schema";
 import { money, paypal } from "./client";
 
 export type PayPalLink = { href: string; rel: string; method?: string };
@@ -34,7 +35,9 @@ export type AdOrderInput = {
   discountCents: number;
   /** Ad fee routed to the platform at capture (platform_fees mode only) */
   platformFeeCents: number;
+  /** Merchant receiving the sale. Ignored in payouts mode, where ADGENT is the payee and pays the merchant later. */
   payee: { email?: string; merchantId?: string };
+  feeMode: FeeMode;
   description: string;
   idempotencyKey: string;
 };
@@ -44,7 +47,9 @@ export function encodeAttribution(a: AdOrderInput["attribution"]): string {
 }
 
 export function decodeAttribution(customId?: string) {
-  const [tag, campaignId, surface, publisherId] = (customId ?? "").split("|");
+  const parts = (customId ?? "").split("|");
+  if (parts.length !== 4) return null;
+  const [tag, campaignId, surface, publisherId] = parts;
   if (tag !== "adg") return null;
   return {
     campaignId: campaignId === "-" ? null : campaignId,
@@ -53,17 +58,15 @@ export function decodeAttribution(customId?: string) {
   };
 }
 
-/**
- * Create a PayPal order for an ad-attributed sale.
- * The discount is a real line-level discount, and in platform_fees mode the ad fee
- * is declared on the purchase unit so PayPal splits it out at capture time.
- */
-export async function createAdOrder(input: AdOrderInput): Promise<PayPalOrder> {
-  const e = env();
+/** The order body ADGENT sends to PayPal. Pure, so tests can check it without the network. */
+export function buildAdOrderBody(input: AdOrderInput, appUrl: string, platformMerchantId = "") {
   const total = input.item.unitCents - input.discountCents;
+  if (total <= 0) throw new RangeError("Order total must be positive");
   const payee: Record<string, string> = {};
-  if (input.payee.merchantId) payee.merchant_id = input.payee.merchantId;
-  else if (input.payee.email) payee.email_address = input.payee.email;
+  if (input.feeMode !== "payouts") {
+    if (input.payee.merchantId) payee.merchant_id = input.payee.merchantId;
+    else if (input.payee.email) payee.email_address = input.payee.email;
+  }
 
   const purchaseUnit: Record<string, unknown> = {
     reference_id: input.item.sku,
@@ -90,36 +93,46 @@ export async function createAdOrder(input: AdOrderInput): Promise<PayPalOrder> {
   };
   if (Object.keys(payee).length) purchaseUnit.payee = payee;
 
-  if (e.ADGENT_FEE_MODE === "platform_fees" && input.platformFeeCents > 0) {
+  if (input.feeMode === "platform_fees" && input.platformFeeCents > 0) {
     purchaseUnit.payment_instruction = {
       disbursement_mode: "INSTANT",
       platform_fees: [
         {
           amount: { currency_code: "USD", value: money.toValue(input.platformFeeCents) },
-          ...(e.PAYPAL_PLATFORM_MERCHANT_ID ? { payee: { merchant_id: e.PAYPAL_PLATFORM_MERCHANT_ID } } : {}),
+          ...(platformMerchantId ? { payee: { merchant_id: platformMerchantId } } : {}),
         },
       ],
     };
   }
 
-  return paypal<PayPalOrder>("/v2/checkout/orders", {
-    method: "POST",
-    idempotencyKey: input.idempotencyKey,
-    body: {
-      intent: "CAPTURE",
-      purchase_units: [purchaseUnit],
-      payment_source: {
-        paypal: {
-          experience_context: {
-            brand_name: "ADGENT Sponsored Offer",
-            user_action: "PAY_NOW",
-            shipping_preference: "NO_SHIPPING",
-            return_url: `${e.APP_URL}/shop/return`,
-            cancel_url: `${e.APP_URL}/shop/cancel`,
-          },
+  return {
+    intent: "CAPTURE",
+    purchase_units: [purchaseUnit],
+    payment_source: {
+      paypal: {
+        experience_context: {
+          brand_name: "ADGENT Sponsored Offer",
+          user_action: "PAY_NOW",
+          shipping_preference: "NO_SHIPPING",
+          return_url: `${appUrl}/shop/return`,
+          cancel_url: `${appUrl}/shop/cancel`,
         },
       },
     },
+  };
+}
+
+/**
+ * Create a PayPal order for an ad-attributed sale.
+ * The discount is a real line-level discount. In platform_fees mode the ad fee is declared
+ * on the purchase unit so PayPal splits it out at capture time.
+ */
+export async function createAdOrder(input: AdOrderInput): Promise<PayPalOrder> {
+  const e = env();
+  return paypal<PayPalOrder>("/v2/checkout/orders", {
+    method: "POST",
+    idempotencyKey: input.idempotencyKey,
+    body: buildAdOrderBody(input, e.APP_URL, e.PAYPAL_PLATFORM_MERCHANT_ID),
   });
 }
 

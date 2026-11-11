@@ -44,3 +44,6 @@ next-env.d.ts
 *.db
 *.db-journal
 !.env.example
+
+# local db backups
+*.db.bak*

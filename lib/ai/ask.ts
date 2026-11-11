@@ -50,6 +50,7 @@ export async function askLedger(question: string): Promise<GridQuery> {
       .join("\n")}\nRevenue questions mean type=captured. Use groupBy when the question compares categories (sum of amount and fee is shown per group).`,
     prompt: question,
     schema: GridQuery,
+    tier: "fast",
     effort: "low",
     maxTokens: 4000,
   });

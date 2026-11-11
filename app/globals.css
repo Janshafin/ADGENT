@@ -1,19 +1,49 @@
 @import "tailwindcss";
 
+/*
+ * Design tokens. Light by default, dark follows the system (no app-level switch, per Apple's HIG).
+ * Text contrast on --bg: --text 16.8:1, --muted 5.1:1, --pp-sky 5.6:1, --good 4.9:1, --bad 5.0:1, --gold 5.6:1.
+ */
 :root {
-  --bg: #070b14;
-  --panel: #0e1525;
-  --panel-2: #131c31;
-  --line: #1f2a44;
-  --text: #e8edf7;
-  --muted: #8a97b2;
+  --bg: #ffffff;
+  --panel: #f5f5f7;
+  --panel-2: #ffffff;
+  --line: #d2d2d7;
+  --hairline: rgba(0, 0, 0, 0.08);
+  --text: #1d1d1f;
+  --muted: #6e6e73;
   --pp-blue: #0070e0;
+  --pp-blue-hover: #0062c4;
   --pp-navy: #003087;
-  --pp-sky: #3b9bff;
-  --good: #22c55e;
-  --warn: #f59e0b;
-  --bad: #ef4444;
-  --gold: #ffc439;
+  --pp-sky: #0066cc;
+  --good: #1a7f37;
+  --warn: #a05a00;
+  --bad: #d70015;
+  --gold: #8a5a00;
+  --paypal-yellow: #ffc439;
+  --nav-bg: rgba(255, 255, 255, 0.82);
+  --row-alt: #fafafc;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #000000;
+    --panel: #1c1c1e;
+    --panel-2: #2c2c2e;
+    --line: #424245;
+    --hairline: rgba(255, 255, 255, 0.1);
+    --text: #f5f5f7;
+    --muted: #a1a1a6;
+    --pp-blue: #0a84ff;
+    --pp-blue-hover: #409cff;
+    --pp-sky: #2997ff;
+    --good: #30d158;
+    --warn: #ff9f0a;
+    --bad: #ff453a;
+    --gold: #ffc439;
+    --nav-bg: rgba(22, 22, 23, 0.8);
+    --row-alt: #111113;
+  }
 }
 
 @theme inline {
@@ -30,57 +60,125 @@
   --color-warn: var(--warn);
   --color-bad: var(--bad);
   --color-gold: var(--gold);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --font-sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", var(--font-inter), "Helvetica Neue", Arial, sans-serif;
+  --font-display: -apple-system, BlinkMacSystemFont, "SF Pro Display", var(--font-inter), "Helvetica Neue", Arial, sans-serif;
+  --font-mono: ui-monospace, "SF Mono", SFMono-Regular, Menlo, monospace;
 }
 
 html {
-  color-scheme: dark;
+  color-scheme: light dark;
+  -webkit-text-size-adjust: 100%;
 }
 
 body {
-  background:
-    radial-gradient(1200px 600px at 10% -10%, rgba(0, 112, 224, 0.18), transparent 60%),
-    radial-gradient(900px 500px at 110% 10%, rgba(255, 196, 57, 0.07), transparent 60%),
-    var(--bg);
+  background: var(--bg);
   color: var(--text);
-  font-family: var(--font-geist-sans), system-ui, sans-serif;
+  font-family: var(--font-sans);
+  font-size: 17px;
+  line-height: 1.47;
+  letter-spacing: -0.022em;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Display type: large, semibold, tightly tracked. */
+.display {
+  font-family: var(--font-display);
+  font-weight: 600;
+  letter-spacing: -0.028em;
+  line-height: 1.05;
 }
 
 .card {
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.025), transparent), var(--panel);
-  border: 1px solid var(--line);
-  border-radius: 16px;
+  background: var(--panel);
+  border-radius: 22px;
+}
+
+.tile {
+  background: var(--panel-2);
+  border-radius: 14px;
 }
 
 .btn {
   display: inline-flex;
   align-items: center;
-  gap: 0.5rem;
-  border-radius: 999px;
-  padding: 0.55rem 1.1rem;
-  font-weight: 600;
-  font-size: 0.875rem;
-  transition: transform 0.08s ease, background 0.15s ease, opacity 0.15s;
+  justify-content: center;
+  gap: 0.4rem;
+  border-radius: 980px;
+  padding: 0.6rem 1.25rem;
+  min-height: 2.75rem;
+  font-weight: 500;
+  font-size: 1rem;
+  letter-spacing: -0.01em;
+  transition: background-color 0.15s ease, opacity 0.15s ease;
+  cursor: pointer;
 }
-.btn:active { transform: scale(0.98); }
-.btn:disabled { opacity: 0.5; cursor: not-allowed; }
-.btn-primary { background: var(--pp-blue); color: white; }
-.btn-primary:hover:not(:disabled) { background: #0a84ff; }
-.btn-gold { background: var(--gold); color: #111; }
-.btn-ghost { border: 1px solid var(--line); color: var(--text); }
-.btn-ghost:hover:not(:disabled) { background: var(--panel-2); }
+.btn:disabled { opacity: 0.45; cursor: not-allowed; }
+.btn-primary { background: var(--pp-blue); color: #fff; }
+.btn-primary:hover:not(:disabled) { background: var(--pp-blue-hover); }
+/* PayPal's own button colour, kept only for paying with PayPal. */
+.btn-gold { background: var(--paypal-yellow); color: #111; font-weight: 600; }
+.btn-gold:hover:not(:disabled) { background: #f2b320; }
+.btn-ghost { background: transparent; color: var(--pp-sky); box-shadow: inset 0 0 0 1px var(--pp-sky); }
+.btn-ghost:hover:not(:disabled) { background: color-mix(in srgb, var(--pp-sky) 8%, transparent); }
+.btn-quiet { background: var(--panel); color: var(--text); }
+.btn-quiet:hover:not(:disabled) { background: color-mix(in srgb, var(--text) 8%, var(--panel)); }
+.btn-sm { min-height: 2rem; padding: 0.35rem 0.9rem; font-size: 0.875rem; }
 
+/* Text link in Apple's style: accent colour, underline on hover. */
+.link { color: var(--pp-sky); }
+.link:hover { text-decoration: underline; text-underline-offset: 3px; }
+
+/* Suggestion buttons (interactive). */
 .pill {
   display: inline-flex;
   align-items: center;
   gap: 0.35rem;
-  border-radius: 999px;
-  padding: 0.15rem 0.6rem;
-  font-size: 0.72rem;
+  border-radius: 980px;
+  padding: 0.35rem 0.85rem;
+  font-size: 0.875rem;
+  background: var(--panel);
+  color: var(--text);
+}
+button.pill:hover, label.pill:hover { background: color-mix(in srgb, var(--text) 8%, var(--panel)); }
+/* On a grey card, quiet controls sit on white so they stay visible. */
+.card .pill, .card .btn-quiet { background: var(--bg); }
+.card button.pill:hover, .card .btn-quiet:hover:not(:disabled) { background: color-mix(in srgb, var(--text) 6%, var(--bg)); }
+.select { border-radius: 12px; background: var(--panel); padding: 0.6rem 2.25rem 0.6rem 1rem; font-size: 0.9375rem; color: var(--text); }
+
+/* Functional badges only: ad disclosure, status, mode. Static metadata stays plain text. */
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  border-radius: 6px;
+  padding: 0.1rem 0.45rem;
+  font-size: 0.75rem;
   font-weight: 600;
-  border: 1px solid var(--line);
-  color: var(--muted);
+  letter-spacing: 0;
+  background: var(--panel);
+  color: var(--text);
+  white-space: nowrap;
+}
+.chip-sponsored { background: color-mix(in srgb, var(--paypal-yellow) 30%, transparent); color: var(--gold); }
+
+.meta { font-size: 0.8125rem; color: var(--muted); letter-spacing: -0.005em; }
+
+.field {
+  width: 100%;
+  border-radius: 12px;
+  background: var(--panel);
+  padding: 0.7rem 1rem;
+  font-size: 1rem;
+  color: var(--text);
+  outline: none;
+  box-shadow: inset 0 0 0 1px transparent;
+}
+.field:focus { box-shadow: inset 0 0 0 2px var(--pp-blue); }
+
+:focus-visible {
+  outline: 3px solid color-mix(in srgb, var(--pp-blue) 60%, transparent);
+  outline-offset: 2px;
+  border-radius: 8px;
 }
 
 .stat-num {
@@ -89,22 +187,23 @@ body {
 }
 
 @keyframes rowpulse {
-  0% { background: rgba(34, 197, 94, 0.35); }
+  0% { background: color-mix(in srgb, var(--good) 22%, transparent); }
   100% { background: transparent; }
 }
 .ag-row.row-new { animation: rowpulse 2.2s ease-out; }
 
 @keyframes shimmer {
-  0% { background-position: -400px 0; }
-  100% { background-position: 400px 0; }
+  0% { opacity: 0.55; }
+  50% { opacity: 1; }
+  100% { opacity: 0.55; }
 }
 .skeleton {
-  background: linear-gradient(90deg, var(--panel-2) 0px, #1b2742 120px, var(--panel-2) 240px);
-  background-size: 800px 100%;
-  animation: shimmer 1.4s infinite linear;
-  border-radius: 8px;
+  background: color-mix(in srgb, var(--text) 7%, transparent);
+  animation: shimmer 1.6s ease-in-out infinite;
+  border-radius: 10px;
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .ag-row.row-new, .skeleton { animation: none; }
+  .ag-row.row-new, .skeleton, .animate-ping, .animate-bounce { animation: none; }
+  * { scroll-behavior: auto !important; }
 }

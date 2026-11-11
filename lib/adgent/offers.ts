@@ -1,9 +1,10 @@
 import { eq } from "drizzle-orm";
 import { db, schema } from "../db";
 import type { Surface } from "../db/schema";
-import { rankOffers, type OfferCandidate } from "../ai/offers";
+import { rankOffers, lexical, type OfferCandidate } from "../ai/offers";
 import { record } from "./ledger";
 import { bucket } from "../util";
+import { cleanMerchantText } from "../ai/untrusted";
 
 export type SponsoredOffer = {
   offerId: string;
@@ -27,7 +28,7 @@ export function inHoldout(campaignId: string, buyerRef: string | null | undefine
   return Boolean(buyerRef) && bucket(`${campaignId}:${buyerRef}`) < holdoutPct;
 }
 
-export async function activeCandidates(): Promise<(OfferCandidate & { image: string; payLater: boolean; holdoutPct: number; merchantId: string; productId: string })[]> {
+export async function activeCandidates(): Promise<(OfferCandidate & { image: string; payLater: boolean; holdoutPct: number; merchantId: string; productId: string; flagged: boolean })[]> {
   const d = db();
   const [camps, prods, merchs] = await Promise.all([
     d.select().from(schema.campaigns).where(eq(schema.campaigns.status, "active")),
@@ -41,16 +42,24 @@ export async function activeCandidates(): Promise<(OfferCandidate & { image: str
         const p = prods.find((x) => x.id === pid);
         const m = merchs.find((x) => x.id === c.merchantId);
         if (!p || !m) return [];
+        // Advertiser text is untrusted: cleaned once here, before any agent, widget or model sees it.
+        const title = cleanMerchantText(p.title, 120);
+        // A single-product campaign's blurb describes that product; otherwise each product keeps its own copy.
+        const copy = c.productIds.length === 1 && c.agentBlurb ? c.agentBlurb : `${p.description}${c.discountPct ? ` ${c.discountPct}% off.` : ""}`;
+        const description = cleanMerchantText(copy, 400);
+        const flagged = title.flagged || description.flagged;
         return [{
           offerId: `${c.id}:${p.id}`,
           campaignId: c.id,
           merchantId: m.id,
           productId: p.id,
           merchantName: m.name,
-          trustScore: m.trustScore,
+          // Copy that tries to instruct the agent costs the advertiser rank.
+          trustScore: flagged ? m.trustScore * 0.5 : m.trustScore,
           feeRate: c.feeRate,
-          title: p.title,
-          description: c.agentBlurb || p.description,
+          title: title.text,
+          description: description.text,
+          flagged,
           tags: p.tags,
           priceCents: p.priceCents,
           discountPct: c.discountPct,
@@ -112,6 +121,16 @@ export async function findOffers(args: {
     ),
   );
   return out;
+}
+
+/**
+ * How many matching offers this shopper didn't see because they are in a campaign's holdout.
+ * Keyword match only (no model call, no impression logged): it only explains an empty result.
+ */
+export async function heldOutMatches(query: string, buyerRef: string | null | undefined): Promise<number> {
+  if (!buyerRef) return 0;
+  const all = await activeCandidates();
+  return all.filter((c) => inHoldout(c.campaignId, buyerRef, c.holdoutPct) && lexical(query, c) >= 0.45).length;
 }
 
 export async function getOffer(offerId: string) {

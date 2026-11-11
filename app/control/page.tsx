@@ -6,30 +6,37 @@ import {
   AllCommunityModule,
   ModuleRegistry,
   themeQuartz,
-  colorSchemeDarkBlue,
   type ColDef,
   type GridApi,
   type CellValueChangedEvent,
   type RowClassParams,
 } from "ag-grid-community";
-import { api, fmtUsd } from "@/lib/client/api";
+import { api, fmtUsd, useStatus, getAdminToken, setAdminToken } from "@/lib/client/api";
+import type { OrderRow } from "@/app/api/orders/route";
 import type { LedgerRow } from "@/lib/adgent/ledger";
 import type { CampaignMetrics } from "@/lib/adgent/metrics";
 import type { GridQuery } from "@/lib/ai/ask";
 
 ModuleRegistry.registerModules([AllCommunityModule]);
 
-const theme = themeQuartz.withPart(colorSchemeDarkBlue).withParams({
-  backgroundColor: "#0e1525",
-  headerBackgroundColor: "#131c31",
-  oddRowBackgroundColor: "#0c1322",
-  borderColor: "#1f2a44",
-  accentColor: "#3b9bff",
-  fontFamily: "var(--font-geist-sans)",
-  fontSize: 13,
-  rowHeight: 38,
-  headerHeight: 38,
-  wrapperBorderRadius: 14,
+// Grid colours come from the same tokens as the page, so it follows light and dark mode.
+const theme = themeQuartz.withParams({
+  backgroundColor: "var(--bg)",
+  foregroundColor: "var(--text)",
+  headerBackgroundColor: "var(--panel)",
+  headerTextColor: "var(--muted)",
+  oddRowBackgroundColor: "var(--row-alt)",
+  borderColor: "var(--hairline)",
+  rowBorder: { color: "var(--hairline)" },
+  wrapperBorder: false,
+  accentColor: "var(--pp-blue)",
+  fontFamily: "var(--font-sans)",
+  fontSize: 14,
+  headerFontWeight: 500,
+  rowHeight: 44,
+  headerHeight: 40,
+  wrapperBorderRadius: 18,
+  spacing: 7,
 });
 
 type Economics = {
@@ -43,22 +50,36 @@ type Economics = {
   totalPaypalRevenue: number;
   perAdDollar: number;
   allTimeAdFees: number;
+  settledSales: number;
+  awaitingPayout: number;
+  refundedSales: number;
+  merchantPayoutsPaid: number;
+  publisherPayoutsPaid: number;
+};
+
+const ORDER_STATUS: Record<string, string> = {
+  created: "text-muted",
+  captured: "text-pp-sky",
+  settled: "text-good",
+  refunded: "text-bad",
+  failed: "text-muted",
 };
 
 const TYPE_STYLE: Record<string, { label: string; cls: string }> = {
-  campaign_launched: { label: "🚀 launched", cls: "text-pp-sky" },
-  campaign_paused: { label: "⏸ paused", cls: "text-muted" },
-  impression: { label: "👁 impression", cls: "text-muted" },
-  click: { label: "👆 click", cls: "text-text" },
-  order_created: { label: "🧾 PayPal order", cls: "text-pp-sky" },
-  captured: { label: "💰 captured", cls: "text-good" },
-  fee_collected: { label: "🏦 ad fee", cls: "text-gold" },
-  payout_sent: { label: "💸 payout", cls: "text-gold" },
-  refunded: { label: "↩ refunded", cls: "text-bad" },
-  invoice_sent: { label: "📨 invoice", cls: "text-gold" },
+  campaign_launched: { label: "Launched", cls: "text-pp-sky" },
+  campaign_paused: { label: "Paused", cls: "text-muted" },
+  impression: { label: "Impression", cls: "text-muted" },
+  click: { label: "Click", cls: "text-text" },
+  order_created: { label: "PayPal order", cls: "text-pp-sky" },
+  captured: { label: "Captured", cls: "text-good" },
+  fee_collected: { label: "Ad fee", cls: "text-gold" },
+  payout_sent: { label: "Payout", cls: "text-gold" },
+  refunded: { label: "Refunded", cls: "text-bad" },
+  invoice_sent: { label: "Invoice", cls: "text-gold" },
+  guardian: { label: "Guardian", cls: "text-warn" },
 };
 
-const SURFACE: Record<string, string> = { agent: "🤖 AI agent", widget: "📰 publisher", winback: "✉️ win-back" };
+const SURFACE: Record<string, string> = { agent: "AI assistant", widget: "Publisher site", winback: "Win-back link" };
 
 export default function MissionControl() {
   const [rows, setRows] = useState<LedgerRow[]>([]);
@@ -70,12 +91,17 @@ export default function MissionControl() {
   const [toast, setToast] = useState<string | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
   const [showNoise, setShowNoise] = useState(false);
+  const [orders, setOrders] = useState<OrderRow[]>([]);
+  // Only rendered after /api/status loads on the client, so reading sessionStorage here cannot mismatch hydration.
+  const [adminToken, setAdminTokenState] = useState(() => (typeof window === "undefined" ? "" : getAdminToken()));
+  const status = useStatus();
   const ledgerApi = useRef<GridApi<LedgerRow> | null>(null);
   const freshIds = useRef(new Set<number>());
 
   const refreshAggregates = useCallback(() => {
     api<CampaignMetrics[]>("/api/campaigns").then(setCampaigns).catch(() => {});
     api<Economics>("/api/economics").then(setEcon).catch(() => {});
+    api<OrderRow[]>("/api/orders").then(setOrders).catch(() => {});
   }, []);
 
   // Initial load + live SSE tail of the ledger
@@ -93,7 +119,7 @@ export default function MissionControl() {
         setRows((prev) => [...prev, ...incoming].slice(-5000));
         if (incoming.some((r) => r.type !== "impression")) refreshAggregates();
         const sale = incoming.find((r) => r.type === "captured");
-        if (sale) setToast(`💰 Sale settled on PayPal: ${fmtUsd(sale.amount ?? 0)} via ${SURFACE[sale.surface ?? ""] ?? sale.surface}`);
+        if (sale) setToast(`New sale on PayPal: ${fmtUsd(sale.amount ?? 0)} via ${SURFACE[sale.surface ?? ""] ?? sale.surface}`);
       });
     });
     refreshAggregates();
@@ -167,7 +193,7 @@ export default function MissionControl() {
         valueFormatter: (p) => `${Math.round((p.value ?? 0) * 100)}%`,
         valueParser: (p) => Math.min(0.3, Math.max(0.01, Number(String(p.newValue).replace("%", "")) / 100)),
       },
-      { field: "budget", headerName: "Budget", width: 110, editable: true, type: "rightAligned", valueFormatter: (p) => fmtUsd(p.value ?? 0, 0), valueParser: (p) => Math.max(10, Number(String(p.newValue).replace(/[$,]/g, ""))) },
+      { field: "budget", headerName: "Budget", width: 110, editable: true, type: "rightAligned", valueFormatter: (p) => fmtUsd(p.value ?? 0, 0), valueParser: (p) => Math.min(1000, Math.max(10, Number(String(p.newValue).replace(/[$,]/g, "")) || 10)) },
       {
         field: "spent",
         headerName: "Spent",
@@ -207,6 +233,46 @@ export default function MissionControl() {
     [],
   );
 
+  const refund = useCallback(
+    (o: OrderRow) => {
+      if (!window.confirm(`Refund ${fmtUsd(o.sale)} to the buyer for ${o.productTitle}? The ad fee is reversed.`)) return;
+      void action("refund", async () => {
+        const r = await api<{ id: string; status: string }>(`/api/orders/${encodeURIComponent(o.id)}/refund`, { method: "POST" });
+        return `Refunded (${r.id}): ${fmtUsd(o.sale)} back to the buyer, ${fmtUsd(o.fee)} ad fee reversed`;
+      });
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [],
+  );
+
+  const orderCols = useMemo<ColDef<OrderRow>[]>(
+    () => [
+      { field: "createdAt", headerName: "Time", width: 110, sort: "desc", valueFormatter: (p) => (p.value ? new Date(p.value).toLocaleTimeString() : "") },
+      { field: "status", headerName: "Status", width: 105, cellRenderer: (p: { value: string }) => <span className={ORDER_STATUS[p.value]}>{p.value}</span> },
+      { field: "productTitle", headerName: "Product", flex: 1.3, minWidth: 180 },
+      { field: "surface", headerName: "Surface", width: 120, valueFormatter: (p) => (p.value ? SURFACE[p.value] ?? p.value : "") },
+      { field: "sale", headerName: "Sale", width: 95, type: "rightAligned", valueFormatter: (p) => fmtUsd(p.value ?? 0) },
+      { field: "fee", headerName: "Ad fee", width: 90, type: "rightAligned", valueFormatter: (p) => fmtUsd(p.value ?? 0), cellClass: "text-gold" },
+      { field: "merchantNet", headerName: "Merchant", width: 100, type: "rightAligned", valueFormatter: (p) => fmtUsd(p.value ?? 0), headerTooltip: "Paid to the merchant by PayPal Payouts after the refund hold" },
+      { field: "publisherShare", headerName: "Publisher", width: 100, type: "rightAligned", valueFormatter: (p) => fmtUsd(p.value ?? 0) },
+      { field: "captureId", headerName: "PayPal capture", width: 170, cellClass: "font-mono text-xs" },
+      { field: "payoutId", headerName: "Payout batch", width: 160, cellClass: "font-mono text-xs" },
+      {
+        headerName: "",
+        width: 100,
+        sortable: false,
+        filter: false,
+        cellRenderer: (p: { data?: OrderRow }) =>
+          p.data && (p.data.status === "captured" || p.data.status === "settled") ? (
+            <button type="button" className="text-xs font-medium text-bad hover:underline" onClick={() => refund(p.data!)}>
+              Refund
+            </button>
+          ) : null,
+      },
+    ],
+    [refund],
+  );
+
   async function onCampaignEdit(e: CellValueChangedEvent<CampaignMetrics>) {
     const f = e.colDef.field;
     const patch: Record<string, unknown> = {};
@@ -217,7 +283,7 @@ export default function MissionControl() {
       await api(`/api/campaigns/${e.data.campaignId}`, { method: "PATCH", json: patch });
       setToast(`Updated ${e.data.name}`);
     } catch (err) {
-      setToast(`⚠ ${(err as Error).message}`);
+      setToast((err as Error).message);
     }
     refreshAggregates();
   }
@@ -243,7 +309,7 @@ export default function MissionControl() {
       ledgerApi.current?.setFilterModel(model);
       if (gq.sort) ledgerApi.current?.applyColumnState({ state: [{ colId: gq.sort.column, sort: gq.sort.dir }], defaultState: { sort: null } });
     } catch (err) {
-      setToast(`⚠ ${(err as Error).message}`);
+      setToast((err as Error).message);
     } finally {
       setAsking(false);
     }
@@ -277,7 +343,7 @@ export default function MissionControl() {
     try {
       setToast(await fn());
     } catch (err) {
-      setToast(`⚠ ${(err as Error).message}`);
+      setToast((err as Error).message);
     } finally {
       setBusy(null);
       refreshAggregates();
@@ -295,48 +361,68 @@ export default function MissionControl() {
   const SUGGESTIONS = ["Which campaign made the most revenue from AI agents?", "Show sales over $20", "Ad fees by surface", "Every refund"];
 
   return (
-    <div className="mx-auto max-w-[1500px] px-4 py-6 sm:px-6">
+    <div className="mx-auto max-w-[1400px] px-4 py-10 sm:px-6">
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <p className="text-sm text-muted">Mission Control</p>
-          <h1 className="text-3xl font-semibold tracking-tight">Every ad dollar, live on PayPal rails</h1>
+          <h1 className="display text-4xl sm:text-5xl">Mission Control</h1>
+          <p className="mt-2 text-lg text-muted">Every ad dollar, from the click to the payout, as it happens on PayPal.</p>
         </div>
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          {status?.adminRequired && (
+            <label className="flex items-center gap-2 text-xs text-muted">
+              Admin token
+              <input
+                type="password"
+                value={adminToken}
+                onChange={(e) => {
+                  setAdminTokenState(e.target.value);
+                  setAdminToken(e.target.value);
+                }}
+                className="w-40 rounded-md border border-line bg-bg px-2 py-1.5 text-sm"
+                autoComplete="off"
+              />
+            </label>
+          )}
           <button
-            className="btn btn-ghost"
+            className="btn btn-primary"
             disabled={busy !== null}
+            title="Pays every sale whose refund hold has passed. A background worker also does this automatically."
             onClick={() =>
-              action("payouts", async () => {
-                const r = await api<{ batchId: string | null; paid: { publisher: string; cents: number }[] }>("/api/settle/payouts", { method: "POST" });
-                return r.batchId ? `💸 PayPal Payouts batch ${r.batchId}: ${r.paid.map((p) => `${p.publisher} ${fmtUsd(p.cents / 100)}`).join(", ")}` : "No publisher earnings due yet";
+              action("settle", async () => {
+                const r = await api<{ batchId: string | null; paid: { name: string; kind: string; cents: number }[]; orders: number }>("/api/settle/payouts", { method: "POST" });
+                return r.batchId
+                  ? `Paid out ${r.orders} sale(s) in PayPal Payouts batch ${r.batchId}: ${r.paid.map((p) => `${p.name} ${fmtUsd(p.cents / 100)}`).join(", ")}`
+                  : `Nothing to settle yet. Sales wait ${status?.holdSeconds ?? 120}s (the refund hold) before payout.`;
               })
             }
           >
-            {busy === "payouts" ? "Paying…" : "💸 Pay publishers"}
+            {busy === "settle" ? "Paying out…" : "Pay out now"}
           </button>
-          <button
-            className="btn btn-ghost"
-            disabled={busy !== null}
-            onClick={() =>
-              action("invoice", async () => {
-                const r = await api<{ invoiceId?: string; totalCents?: number; message?: string }>("/api/settle/invoice", { json: { merchantId: "m_beanthere" } });
-                return r.invoiceId ? `📨 PayPal invoice ${r.invoiceId} sent for ${fmtUsd((r.totalCents ?? 0) / 100)}` : r.message ?? "Done";
-              })
-            }
-          >
-            {busy === "invoice" ? "Billing…" : "📨 Bill ad fees"}
-          </button>
+          {status?.feeMode === "invoice" && (
+            <button
+              className="btn btn-ghost"
+              disabled={busy !== null}
+              onClick={() =>
+                action("invoice", async () => {
+                  const r = await api<{ invoiceId?: string; totalCents?: number; message?: string }>("/api/settle/invoice", { json: { merchantId: "m_beanthere" } });
+                  return r.invoiceId ? `PayPal invoice ${r.invoiceId} sent for ${fmtUsd((r.totalCents ?? 0) / 100)}` : r.message ?? "Done";
+                })
+              }
+            >
+              {busy === "invoice" ? "Sending invoice…" : "Invoice ad fees"}
+            </button>
+          )}
         </div>
       </div>
 
       {/* PayPal P&L */}
-      <section className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-6">
-        <Kpi label="Branded checkout TPV" value={econ ? fmtUsd(econ.brandedCheckoutTpv) : null} hint={`${econ?.liveSales ?? 0} live PayPal sales`} />
-        <Kpi label="Ad fee revenue" value={econ ? fmtUsd(econ.adFeeRevenue) : null} hint="pay-per-sale" accent="gold" />
-        <Kpi label="Publisher payouts" value={econ ? fmtUsd(econ.publisherPayouts) : null} hint="via PayPal Payouts" />
-        <Kpi label="Processing revenue (est.)" value={econ ? fmtUsd(econ.processingRevenue) : null} hint="3.49% + 49¢" />
-        <Kpi label="Pay Later eligible" value={econ ? String(econ.payLaterEligibleSales) : null} hint="sales ≥ $30" />
-        <Kpi label="PayPal earns per $1 of ads" value={econ ? (econ.perAdDollar ? `$${econ.perAdDollar.toFixed(2)}` : "—") : null} hint="net ad + processing" accent="good" />
+      <section className="mt-5 grid grid-cols-2 gap-3 lg:grid-cols-6">
+        <Kpi label="Sales through PayPal" value={econ ? fmtUsd(econ.brandedCheckoutTpv) : null} hint={`${econ?.liveSales ?? 0} sales`} />
+        <Kpi label="Ad fee revenue" value={econ ? fmtUsd(econ.adFeeRevenue) : null} hint="Charged only on sales" accent="gold" />
+        <Kpi label="Paid out via Payouts" value={econ ? fmtUsd(econ.merchantPayoutsPaid + econ.publisherPayoutsPaid) : null} hint={econ ? `${econ.settledSales} settled, ${econ.awaitingPayout} in refund window` : "Merchants and publishers"} />
+        <Kpi label="Processing revenue" value={econ ? fmtUsd(econ.processingRevenue) : null} hint="Estimated at 3.49% + 49¢" />
+        <Kpi label="Pay Later eligible" value={econ ? String(econ.payLaterEligibleSales) : null} hint="Sales of $30 or more" />
+        <Kpi label="PayPal revenue per ad dollar" value={econ ? (econ.perAdDollar ? `$${econ.perAdDollar.toFixed(2)}` : "—") : null} hint="Ad fees plus processing" accent="good" />
       </section>
 
       {/* Ask your ads */}
@@ -366,7 +452,7 @@ export default function MissionControl() {
             <input type="checkbox" checked={showNoise} onChange={(e) => setShowNoise(e.target.checked)} className="accent-pp" /> show impressions
           </label>
         </div>
-        {query && <p className="mt-3 text-sm text-pp-sky">→ {query.explanation}</p>}
+        {query && <p className="mt-3 text-sm text-muted">{query.explanation}</p>}
         {grouped && (
           <div className="mt-3 overflow-x-auto">
             <table className="w-full text-sm">
@@ -393,8 +479,8 @@ export default function MissionControl() {
       {campaigns.some((c) => c.advice) && (
         <section className="mt-5 grid gap-3 md:grid-cols-2">
           {campaigns.filter((c) => c.advice).map((c) => (
-            <div key={c.campaignId} className={`card border-l-4 p-4 ${c.iroas !== null && c.iroas < 1.5 ? "border-l-warn" : "border-l-good"}`}>
-              <div className="text-xs text-muted">Budget guardian · holdout test</div>
+            <div key={c.campaignId} className="card p-5">
+              <div className="meta">Budget guardian</div>
               <div className="mt-1 font-medium">{c.name}</div>
               <p className="mt-1 text-sm text-muted">{c.advice}</p>
             </div>
@@ -403,9 +489,10 @@ export default function MissionControl() {
       )}
 
       {/* Campaigns */}
-      <section className="mt-5">
-        <h2 className="mb-2 text-sm font-semibold text-muted">CAMPAIGNS · double-click status, fee or budget to edit</h2>
-        <div style={{ height: Math.min(420, 60 + campaigns.length * 38) }}>
+      <section className="mt-12">
+        <h2 className="text-2xl font-semibold tracking-tight">Campaigns</h2>
+        <p className="meta mb-4 mt-1">Double-click a status, fee or budget to change it.</p>
+        <div style={{ height: Math.min(480, 48 + campaigns.length * 44) }}>
           <AgGridReact<CampaignMetrics>
             theme={theme}
             rowData={campaigns}
@@ -418,12 +505,35 @@ export default function MissionControl() {
         </div>
       </section>
 
+      {/* Orders: the money split per sale */}
+      <section className="mt-12">
+        <h2 className="text-2xl font-semibold tracking-tight">Orders</h2>
+        <p className="meta mb-4 mt-1">Every sale and where each dollar went.</p>
+        {orders.length === 0 ? (
+          <div className="card p-6 text-sm text-muted">
+            No live sales yet. <a href="/agent" className="text-pp-sky hover:underline">Buy something through the AI agent</a> or the{" "}
+            <a href="/demo/blog" className="text-pp-sky hover:underline">publisher demo</a>, and it lands here in real time.
+          </div>
+        ) : (
+          <div style={{ height: Math.min(440, 48 + orders.length * 44) }}>
+            <AgGridReact<OrderRow>
+              theme={theme}
+              rowData={orders}
+              columnDefs={orderCols}
+              getRowId={(p) => p.data.id}
+              defaultColDef={{ sortable: true, resizable: true, filter: true }}
+            />
+          </div>
+        )}
+      </section>
+
       {/* Live ledger */}
-      <section className="mt-5">
-        <h2 className="mb-2 flex items-center gap-2 text-sm font-semibold text-muted">
-          <span className="relative flex h-2 w-2"><span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-good opacity-75" /><span className="relative inline-flex h-2 w-2 rounded-full bg-good" /></span>
-          LIVE ATTRIBUTION LEDGER · impression → click → PayPal order → capture → fee → payout
+      <section className="mt-12">
+        <h2 className="flex items-center gap-2.5 text-2xl font-semibold tracking-tight">
+          Live ledger
+          <span className="inline-flex h-2 w-2 rounded-full bg-good" aria-label="live" />
         </h2>
+        <p className="meta mb-4 mt-1">Each step of every sale: impression, click, PayPal order, capture, fee, payout.</p>
         <div style={{ height: 560 }}>
           <AgGridReact<LedgerRow>
             theme={theme}
@@ -476,14 +586,14 @@ function matchesFilter(r: LedgerRow, f: GridQuery["filters"][number]): boolean {
 
 function Kpi({ label, value, hint, accent }: { label: string; value: string | null; hint: string; accent?: "gold" | "good" }) {
   return (
-    <div className="card p-4">
-      <div className="text-xs text-muted">{label}</div>
+    <div className="card p-5">
+      <div className="text-sm text-muted">{label}</div>
       {value === null ? (
         <div className="skeleton mt-2 h-7 w-24" />
       ) : (
-        <div className={`stat-num mt-1 text-2xl font-semibold ${accent === "gold" ? "text-gold" : accent === "good" ? "text-good" : ""}`}>{value}</div>
+        <div className={`stat-num display mt-2 text-3xl ${accent === "gold" ? "text-gold" : accent === "good" ? "text-good" : ""}`}>{value}</div>
       )}
-      <div className="mt-1 text-xs text-muted">{hint}</div>
+      <div className="meta mt-1">{hint}</div>
     </div>
   );
 }

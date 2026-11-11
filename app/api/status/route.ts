@@ -1,16 +1,19 @@
 import { connection } from "next/server";
-import { env, paypalConfigured, aiConfigured } from "@/lib/env";
+import { env, paypalMode, aiConfigured } from "@/lib/env";
 
+/** What the UI needs to label itself honestly: simulated vs sandbox PayPal, Claude vs offline agent. */
 export async function GET() {
   await connection();
   const e = env();
   return Response.json({
-    paypal: paypalConfigured(),
-    paypalBase: e.PAYPAL_API_BASE,
+    paypalMode: paypalMode(),
+    paypal: paypalMode() !== "simulated",
     ai: aiConfigured(),
     model: e.ADGENT_MODEL,
+    fastModel: e.ADGENT_MODEL_FAST,
     feeMode: e.ADGENT_FEE_MODE,
+    holdSeconds: e.SETTLEMENT_HOLD_SECONDS,
     webhooks: Boolean(e.PAYPAL_WEBHOOK_ID),
-    demoMerchantPayee: Boolean(e.DEMO_MERCHANT_PAYPAL_EMAIL || e.DEMO_MERCHANT_PAYPAL_ID),
+    adminRequired: paypalMode() !== "simulated",
   });
 }
