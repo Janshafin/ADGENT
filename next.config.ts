@@ -20,7 +20,9 @@ const csp = [
   "frame-ancestors 'none'",
   "manifest-src 'self'",
   "worker-src 'self' blob:",
-  ...(isDev ? [] : ["upgrade-insecure-requests"]),
+  // No upgrade-insecure-requests: it makes browsers fetch scripts and styles over https even
+  // when the site is opened over plain http (a LAN address, or Safari on localhost), which
+  // leaves the page unstyled and dead. Render serves https only, and HSTS keeps browsers there.
 ].join("; ");
 
 const securityHeaders = [

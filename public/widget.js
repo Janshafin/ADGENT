@@ -46,8 +46,8 @@
         if (!offers.length) { slot.style.display = "none"; return; }
         var html = '<div class="adg-wrap"><div class="adg-label"><span>Sponsored</span><span>Pay with PayPal</span></div>';
         offers.forEach(function (o) {
-          // Only ever link to checkout pages on the ADGENT host itself.
-          if (typeof o.checkoutUrl !== "string" || o.checkoutUrl.indexOf(origin + "/") !== 0) return;
+          // Only ever link to a web page (never javascript: or data: URLs).
+          if (typeof o.checkoutUrl !== "string" || !/^https?:\/\//i.test(o.checkoutUrl)) return;
           html +=
             '<a class="adg-card" target="_blank" rel="sponsored noopener" href="' + esc(o.checkoutUrl) + '">' +
             '<div class="adg-img" aria-hidden="true">' + esc(o.image) + "</div>" +
