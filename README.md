@@ -52,7 +52,8 @@ Claude: **Opus 5.5** for campaign strategy and the shopping agent (with server-s
 - **Honest measurement.** A stable 10% holdout per campaign never sees the ad. Mission Control reports incremental ROAS and lift against it, and the **budget guardian pauses** campaigns below 1× iROAS. Shoppers in a holdout are told why they see no ad.
 - **Prompt-injection defense.** Advertiser text is cleaned at the source (markup, hidden characters, instruction phrases), handed to models only inside `<untrusted_offer_data>`, and loses rank if it tries to steer the agent. Structurally, an agent can only check out an offer it showed the shopper, and the shopper approves every payment.
 - **Money-path safety.** Capture, settlement and refunds are idempotent (PayPal-Request-Id + conditional DB updates); orders are claimed before a payout so a sale can't be paid twice; budgets are checked before an order exists; stuck orders are reconciled against PayPal; webhooks are verified and de-duplicated.
-- **Abuse limits.** Rate limits on AI and checkout endpoints, validated inputs, demo caps on budgets and live campaigns, and an admin token for payouts, refunds and invoices once real PayPal keys are set.
+- **Abuse limits.** Rate limits on AI and checkout endpoints, validated inputs, demo caps on budgets and live campaigns, and an admin token for payouts, refunds, invoices and campaign edits once real PayPal keys are set.
+- **Web hardening.** Strict security headers (CSP, HSTS, frame-ancestors none, nosniff), a cross-site request guard on every state-changing API call, JSON-only size-capped request bodies, a global hourly cap on Claude calls, and no internal error text in production responses. See [SECURITY.md](SECURITY.md) for the full threat model.
 
 ## What's real and what's simulated
 
@@ -102,11 +103,11 @@ Then ask: *"Find me good espresso beans under $25."*
 ## Verification
 
 ```bash
-npm run check            # typecheck + lint + 54 tests
+npm run check            # typecheck + lint + 69 tests
 npm run build
 ```
 
-The tests cover the full money path against the simulator (order → approval → racing captures → hold → payouts → refund → replayed webhook), the order body PayPal receives in each fee mode, cents parsing, payout planning, rate limits, the admin guard, holdout stability, offline relevance on the demo prompts, the offline agent, and ten prompt-injection attacks.
+The tests cover the full money path against the simulator (order → approval → racing captures → hold → payouts → refund → replayed webhook), the order body PayPal receives in each fee mode, cents parsing, payout planning, rate limits, the admin guard, holdout stability, offline relevance on the demo prompts, the offline agent, ten prompt-injection attacks, and the web-security guards (cross-site requests, oversized and non-JSON bodies, forged Host headers, spoofed client IPs, PII in public APIs, smuggled agent history, the AI spend cap and demo self-repair).
 
 ## Architecture
 

@@ -1,7 +1,7 @@
 import { z } from "zod";
 import type { MerchantInsights, Audience } from "../graph/audiences";
 import type { Merchant, Product, CampaignForecast, AudienceKey } from "../db/schema";
-import { aiConfigured } from "../env";
+import { aiAvailable } from "./budget";
 import { structured } from "./claude";
 import { usd } from "../util";
 
@@ -120,7 +120,7 @@ export async function proposeCampaigns(merchant: Merchant, products: Product[], 
 
   let set: z.infer<typeof ProposalSet>;
   let source: "claude" | "heuristic" = "heuristic";
-  if (aiConfigured()) {
+  if (aiAvailable()) {
     try {
       set = await structured({
         system: SYSTEM,

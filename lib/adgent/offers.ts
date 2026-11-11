@@ -134,7 +134,8 @@ export async function heldOutMatches(query: string, buyerRef: string | null | un
 }
 
 export async function getOffer(offerId: string) {
-  const [campaignId, productId] = offerId.split(":");
+  const [campaignId, productId, ...rest] = offerId.split(":");
+  if (!campaignId || !productId || rest.length) return null;
   const d = db();
   const [c] = await d.select().from(schema.campaigns).where(eq(schema.campaigns.id, campaignId));
   const [p] = await d.select().from(schema.products).where(eq(schema.products.id, productId));

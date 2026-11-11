@@ -1,6 +1,7 @@
-import { and, eq, lte } from "drizzle-orm";
+import { and, desc, eq, inArray, lte } from "drizzle-orm";
 import { db, schema } from "../db";
-import { env } from "../env";
+import { env, paypalMode } from "../env";
+import { SEED_LIVE_CAMPAIGNS } from "../graph/catalog";
 import { getOrder } from "../paypal/orders";
 import { PayPalError } from "../paypal/client";
 import { settleDue } from "./settlement";
@@ -75,6 +76,39 @@ export async function guardianSweep() {
   return { paused };
 }
 
+/**
+ * Public-demo upkeep, simulated mode only. Anyone may pause campaigns or spend their budgets
+ * there (no real money moves), so a visitor could leave the next judge with no ads to see.
+ * Seeded live campaigns that have stayed paused for 15 minutes are switched back on, with the
+ * budget topped up if it ran out. Never runs once real PayPal credentials are configured.
+ */
+export async function demoUpkeep(now = Date.now(), quietMs = 15 * MIN) {
+  if (paypalMode() !== "simulated") return { reactivated: [] as string[] };
+  const d = db();
+  const ids = SEED_LIVE_CAMPAIGNS.map((c) => c.id);
+  const paused = await d.select().from(schema.campaigns).where(and(inArray(schema.campaigns.id, ids), eq(schema.campaigns.status, "paused")));
+  const reactivated: string[] = [];
+  for (const c of paused) {
+    const [last] = await d
+      .select({ ts: schema.events.ts })
+      .from(schema.events)
+      .where(and(eq(schema.events.campaignId, c.id), inArray(schema.events.type, ["campaign_paused", "guardian"])))
+      .orderBy(desc(schema.events.ts))
+      .limit(1);
+    if (last && now - last.ts.getTime() < quietMs) continue;
+    const budgetCents = c.spentCents >= c.budgetCents ? c.spentCents + 50_000 : c.budgetCents;
+    const [on] = await d
+      .update(schema.campaigns)
+      .set({ status: "active", budgetCents })
+      .where(and(eq(schema.campaigns.id, c.id), eq(schema.campaigns.status, "paused")))
+      .returning();
+    if (!on) continue;
+    reactivated.push(c.id);
+    await record({ type: "campaign_launched", campaignId: c.id, merchantId: c.merchantId, detail: "Demo upkeep: switched back on after 15 minutes paused (simulated mode only)" });
+  }
+  return { reactivated };
+}
+
 /** One pass of every background job. Each job is isolated so one failure can't stop the others. */
 export async function runJobsOnce() {
   const out: Record<string, unknown> = {};
@@ -82,6 +116,7 @@ export async function runJobsOnce() {
     ["settle", () => settleDue()],
     ["reconcile", () => reconcileStuckOrders()],
     ["guardian", () => guardianSweep()],
+    ["demo", () => demoUpkeep()],
   ] as const) {
     try {
       out[name] = await job();

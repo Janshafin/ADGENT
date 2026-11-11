@@ -1,6 +1,10 @@
 import Script from "next/script";
 
-export const metadata = { title: "The Daily Grind · How to dial in espresso at home" };
+export const metadata = {
+  title: "The Daily Grind · How to dial in espresso at home",
+  description: "A demo publisher blog with the ADGENT shoppable ad widget embedded by one script tag.",
+  alternates: { canonical: "/demo/blog" },
+};
 
 /** A stand-in for any small publisher's site, with the ADGENT widget embedded by one script tag. */
 export default function DemoBlog() {

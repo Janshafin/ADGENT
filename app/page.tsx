@@ -1,4 +1,17 @@
 import Link from "next/link";
+import { SITE_DESCRIPTION, SITE_NAME, SITE_URL } from "@/lib/site";
+
+/** Structured data so search engines can describe the product. */
+const JSON_LD = {
+  "@context": "https://schema.org",
+  "@type": "SoftwareApplication",
+  name: SITE_NAME,
+  url: SITE_URL,
+  description: SITE_DESCRIPTION,
+  applicationCategory: "BusinessApplication",
+  operatingSystem: "Web",
+  offers: { "@type": "Offer", price: "0", priceCurrency: "USD", description: "Pay per sale: no cost until a sale settles on PayPal" },
+};
 
 // One real sale from the demo, split exactly as settlement does it (see /judges).
 const SALE = { product: "Midnight Espresso Blend, 12 oz", total: 18.04, merchant: 16.78, publisher: 0.63, adgent: 0.63 };
@@ -7,8 +20,11 @@ const fmt = (n: number) => n.toLocaleString("en-US", { style: "currency", curren
 export default function Home() {
   return (
     <div className="space-y-3 pb-3">
+      {/* Static JSON with no user input; "<" is escaped so it can never close the script tag. */}
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(JSON_LD).replace(/</g, "\\u003c") }} />
       <HeroTile
         tone="white"
+        headingLevel={1}
         eyebrow="ADGENT"
         title="Ads for the age of AI shopping."
         subtitle="Merchants pay only when a sale settles on PayPal."
@@ -91,11 +107,12 @@ function Actions({ primary, secondary }: { primary: Action; secondary?: Action }
   );
 }
 
-function HeroTile(props: { tone: "white" | "gray"; eyebrow: string; title: string; subtitle: string; primary: Action; secondary?: Action; children: React.ReactNode }) {
+function HeroTile(props: { tone: "white" | "gray"; headingLevel?: 1 | 2; eyebrow: string; title: string; subtitle: string; primary: Action; secondary?: Action; children: React.ReactNode }) {
+  const Heading = props.headingLevel === 1 ? "h1" : "h2";
   return (
     <section className={`overflow-hidden px-4 pt-14 text-center sm:pt-16 ${props.tone === "gray" ? "bg-panel" : "bg-bg"}`}>
       <p className="text-lg font-semibold text-muted sm:text-xl">{props.eyebrow}</p>
-      <h2 className="display mx-auto mt-2 max-w-3xl text-[40px] sm:text-[56px]">{props.title}</h2>
+      <Heading className="display mx-auto mt-2 max-w-3xl text-[40px] sm:text-[56px]">{props.title}</Heading>
       <p className="mx-auto mt-3 max-w-2xl text-xl sm:text-[24px] sm:leading-snug">{props.subtitle}</p>
       <Actions primary={props.primary} secondary={props.secondary} />
       <div className="mx-auto mt-12 max-w-[880px] pb-14 sm:pb-16">{props.children}</div>

@@ -24,7 +24,6 @@
     "@anthropic-ai/sdk": "^1.6.0",
     "@libsql/client": "^0.18.0",
     "@modelcontextprotocol/sdk": "^1.32.2",
-    "@paypal/agent-toolkit": "^1.11.0",
     "ag-grid-community": "^36.3.0",
     "ag-grid-react": "^36.3.0",
     "drizzle-orm": "^0.45.4",

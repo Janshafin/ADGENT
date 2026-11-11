@@ -30,6 +30,9 @@ services:
         sync: false
       - key: ADMIN_TOKEN
         generateValue: true
+      # Caps what a scripted attacker can spend on Claude; past it the app uses its offline agent.
+      - key: AI_MAX_CALLS_PER_HOUR
+        value: "300"
       # Optional: without these the app runs on the labelled PayPal simulator and the offline agent.
       - key: PAYPAL_CLIENT_ID
         sync: false

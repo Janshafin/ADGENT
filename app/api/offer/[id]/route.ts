@@ -4,7 +4,14 @@ import { fail } from "@/lib/http";
 export async function GET(_req: Request, ctx: RouteContext<"/api/offer/[id]">) {
   try {
     const { id } = await ctx.params;
-    const o = await getOffer(decodeURIComponent(id));
+    let offerId: string;
+    try {
+      offerId = decodeURIComponent(id);
+    } catch {
+      return Response.json({ error: "Offer not found" }, { status: 404 });
+    }
+    if (offerId.length > 200) return Response.json({ error: "Offer not found" }, { status: 404 });
+    const o = await getOffer(offerId);
     if (!o) return Response.json({ error: "Offer not found" }, { status: 404 });
     return Response.json({
       offerId: `${o.campaign.id}:${o.product.id}`,

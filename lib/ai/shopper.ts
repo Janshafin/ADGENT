@@ -2,7 +2,8 @@ import type Anthropic from "@anthropic-ai/sdk";
 import { eq } from "drizzle-orm";
 import { claude, FALLBACK_BETA } from "./claude";
 import { UNTRUSTED_RULE, wrapUntrusted } from "./untrusted";
-import { env, aiConfigured } from "../env";
+import { env } from "../env";
+import { aiAvailable } from "./budget";
 import { db, schema } from "../db";
 import { findOffers, heldOutMatches, type SponsoredOffer } from "../adgent/offers";
 import { startCheckout } from "../adgent/checkout";
@@ -83,7 +84,7 @@ function offerSummary(o: SponsoredOffer) {
 }
 
 export async function shopperTurn(args: TurnArgs): Promise<TurnResult> {
-  return aiConfigured() ? claudeTurn(args) : offlineTurn(args);
+  return aiAvailable() ? claudeTurn(args) : offlineTurn(args);
 }
 
 async function claudeTurn(args: TurnArgs): Promise<TurnResult> {
@@ -94,7 +95,7 @@ async function claudeTurn(args: TurnArgs): Promise<TurnResult> {
   for (let step = 0; step < 6; step++) {
     const res = await claude().beta.messages.create({
       model: env().ADGENT_MODEL,
-      max_tokens: 16000,
+      max_tokens: 4000,
       betas: [FALLBACK_BETA],
       fallbacks: "default",
       system: [{ type: "text", text: SYSTEM, cache_control: { type: "ephemeral" } }],

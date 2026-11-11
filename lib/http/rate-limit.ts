@@ -3,9 +3,19 @@ import { HttpError } from "./index";
 type Window = { start: number; count: number };
 const g = globalThis as unknown as { __adgentRate?: Map<string, Window> };
 
-/** Client IP as seen through the host's proxy (first x-forwarded-for hop). */
+/**
+ * Client IP for rate limiting. X-Forwarded-For can't be trusted as sent: Render (and most
+ * proxies) append to whatever the client supplied, so its first entry is attacker-controlled.
+ * On Render, Cloudflare sits in front and sets True-Client-IP itself, so we read that.
+ * Elsewhere we take the last X-Forwarded-For hop, which our own proxy added.
+ * CLIENT_IP_HEADER overrides the choice for other hosts.
+ */
 export function clientIp(req: Request): string {
-  return req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || req.headers.get("x-real-ip") || "local";
+  const h = req.headers;
+  const configured = process.env.CLIENT_IP_HEADER?.toLowerCase();
+  if (configured) return h.get(configured)?.split(",").pop()?.trim() || "unknown";
+  if (process.env.RENDER) return h.get("true-client-ip") || h.get("cf-connecting-ip") || "unknown";
+  return h.get("x-forwarded-for")?.split(",").pop()?.trim() || h.get("x-real-ip") || "local";
 }
 
 /**

@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { aiConfigured } from "../env";
+import { aiAvailable } from "./budget";
 import { structured } from "./claude";
 import { UNTRUSTED_RULE, wrapUntrusted } from "./untrusted";
 
@@ -58,7 +58,7 @@ export async function rankOffers(query: string, candidates: OfferCandidate[], li
   if (!affordable.length) return [];
 
   let scored: { offerId: string; relevance: number; reason: string }[];
-  if (aiConfigured()) {
+  if (aiAvailable()) {
     try {
       const out = await structured({
         system: `You score sponsored product offers for relevance to a shopper's request made through an AI shopping agent. Be strict: a coffee grinder is not relevant to a request for coffee beans. Score only on fit to the request, never on price or merchant. Return one result per offer, using its exact offerId.\n${UNTRUSTED_RULE}`,

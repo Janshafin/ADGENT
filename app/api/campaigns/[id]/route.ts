@@ -4,6 +4,7 @@ import { db, schema } from "@/lib/db";
 import { record } from "@/lib/adgent/ledger";
 import { body, fail, HttpError } from "@/lib/http";
 import { rateLimit } from "@/lib/http/rate-limit";
+import { requireAdmin } from "@/lib/auth/admin";
 import { usd } from "@/lib/util";
 
 const Patch = z
@@ -18,6 +19,8 @@ const Patch = z
 export async function PATCH(req: Request, ctx: RouteContext<"/api/campaigns/[id]">) {
   try {
     rateLimit(req, "campaign-edit", 30);
+    // Fee rate and budget decide what a merchant pays, so edits need the admin token once real PayPal is on.
+    requireAdmin(req);
     const { id } = await ctx.params;
     const patch = await body(req, Patch);
     const d = db();

@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { aiConfigured } from "../env";
+import { aiAvailable } from "./budget";
 import { structured } from "./claude";
 
 /** Columns the Mission Control ledger grid exposes to natural-language queries. */
@@ -32,7 +32,7 @@ const GridQuery = z.object({
 export type GridQuery = z.infer<typeof GridQuery>;
 
 export async function askLedger(question: string): Promise<GridQuery> {
-  if (!aiConfigured()) {
+  if (!aiAvailable()) {
     const q = question.toLowerCase();
     const filters: GridQuery["filters"] = [];
     for (const s of ["agent", "widget", "winback"]) if (q.includes(s)) filters.push({ column: "surface", op: "equals", value: s, valueTo: null });

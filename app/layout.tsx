@@ -2,19 +2,35 @@ import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
 import Link from "next/link";
 import { ModeBanner, ModePill } from "@/components/ModeBanner";
+import { SITE_DESCRIPTION, SITE_NAME, SITE_URL } from "@/lib/site";
 import "./globals.css";
 
 // SF Pro on Apple devices via the system font stack; Inter is the fallback everywhere else.
 const inter = Inter({ variable: "--font-inter", subsets: ["latin"], display: "swap" });
 
 export const metadata: Metadata = {
+  metadataBase: new URL(SITE_URL),
   title: { default: "ADGENT: PayPal Ads for the AI-shopping era", template: "%s | ADGENT" },
-  description: "Pay-per-sale ads for small merchants, shown inside AI shopping agents and settled on PayPal.",
+  description: SITE_DESCRIPTION,
+  applicationName: SITE_NAME,
+  keywords: ["PayPal", "AI shopping", "agentic commerce", "pay per sale ads", "retail media", "AI agents", "publisher monetization", "Claude"],
+  authors: [{ name: "ADGENT" }],
+  alternates: { canonical: "/" },
+  robots: { index: true, follow: true, googleBot: { index: true, follow: true, "max-image-preview": "large" } },
   openGraph: {
-    title: "ADGENT: PayPal Ads for the AI-shopping era",
-    description: "When AI does the shopping, who sees the ads? Pay-per-sale ads inside AI agents, settled end to end on PayPal.",
     type: "website",
+    siteName: SITE_NAME,
+    url: "/",
+    title: "ADGENT: PayPal Ads for the AI-shopping era",
+    description: "When AI does the shopping, who sees the ads? Pay-per-sale ads inside AI assistants, settled end to end on PayPal.",
+    locale: "en_US",
   },
+  twitter: {
+    card: "summary_large_image",
+    title: "ADGENT: PayPal Ads for the AI-shopping era",
+    description: "Pay-per-sale ads inside AI assistants, settled end to end on PayPal.",
+  },
+  formatDetection: { telephone: false, email: false, address: false },
 };
 
 export const viewport: Viewport = { themeColor: "#ffffff", colorScheme: "light" };

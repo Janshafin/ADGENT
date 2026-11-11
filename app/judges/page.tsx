@@ -1,7 +1,11 @@
 import Link from "next/link";
 import type { Metadata } from "next";
 
-export const metadata: Metadata = { title: "Judges' tour", description: "Try ADGENT end to end in about a minute, and see exactly what is real." };
+export const metadata: Metadata = {
+  title: "Judges' tour",
+  description: "Try ADGENT end to end in about a minute, and see exactly what is real.",
+  alternates: { canonical: "/judges" },
+};
 
 const STEPS = [
   {

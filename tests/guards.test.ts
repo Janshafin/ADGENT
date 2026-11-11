@@ -5,7 +5,7 @@ import { inHoldout } from "@/lib/adgent/offers";
 import { bucket } from "@/lib/util";
 import { resetEnvCache } from "@/lib/env";
 
-const req = (ip: string, auth?: string) => new Request("http://t", { headers: { "x-forwarded-for": `${ip}, 10.0.0.1`, ...(auth ? { authorization: auth } : {}) } });
+const req = (ip: string, auth?: string) => new Request("http://t", { headers: { "x-forwarded-for": `6.6.6.6, ${ip}`, ...(auth ? { authorization: auth } : {}) } });
 
 describe("rate limit", () => {
   it("allows the limit, then 429s, then resets after the window", () => {
@@ -15,8 +15,17 @@ describe("rate limit", () => {
     rateLimit(req("2.2.2.2"), "t", 3, 60_000, t0 + 1); // other clients unaffected
     rateLimit(req("1.1.1.1"), "t", 3, 60_000, t0 + 60_000);
   });
-  it("reads the first forwarded hop", () => {
+  it("ignores client-supplied forwarded hops and reads the one our proxy added", () => {
     expect(clientIp(req("9.9.9.9"))).toBe("9.9.9.9");
+  });
+  it("on Render, trusts only Cloudflare's True-Client-IP", () => {
+    process.env.RENDER = "true";
+    try {
+      const r = new Request("http://t", { headers: { "x-forwarded-for": "1.2.3.4", "true-client-ip": "5.5.5.5" } });
+      expect(clientIp(r)).toBe("5.5.5.5");
+    } finally {
+      delete process.env.RENDER;
+    }
   });
 });
 
