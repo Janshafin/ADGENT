@@ -33,8 +33,14 @@ const securityHeaders = [
   { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=(), usb=(), browsing-topics=()" },
   // Keeps window.opener away from other sites, but still lets PayPal open its approval popup.
   { key: "Cross-Origin-Opener-Policy", value: "same-origin-allow-popups" },
-  ...(isDev ? [] : [{ key: "Strict-Transport-Security", value: "max-age=63072000; includeSubDomains; preload" }]),
 ];
+
+/**
+ * HSTS only on requests that really arrived over https (Render's proxy sets x-forwarded-proto).
+ * Sent over plain http, Safari still remembers it for localhost and then refuses to open the
+ * local server at all, which looks like the site crashed.
+ */
+const hsts = { key: "Strict-Transport-Security", value: "max-age=63072000; includeSubDomains; preload" };
 
 const nextConfig: NextConfig = {
   poweredByHeader: false,
@@ -51,6 +57,7 @@ const nextConfig: NextConfig = {
   async headers() {
     return [
       { source: "/:path*", headers: securityHeaders },
+      { source: "/:path*", has: [{ type: "header", key: "x-forwarded-proto", value: "https" }], headers: [hsts] },
       // API responses are data, never pages: don't index them or let a browser sniff them as HTML.
       { source: "/api/:path*", headers: [{ key: "X-Robots-Tag", value: "noindex" }, { key: "Cache-Control", value: "no-store" }] },
       // The widget is embedded on publishers' sites, so other origins must be able to load it.
