@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useStatus } from "@/lib/client/api";
 
-/** Says plainly what is real on this deployment. Shown on every page. */
+/** Apple-style ribbon under the nav: says plainly what is real on this deployment. */
 export function ModeBanner() {
   const s = useStatus();
   if (!s || (s.paypalMode !== "simulated" && s.ai)) return null;
@@ -12,9 +12,9 @@ export function ModeBanner() {
     !s.ai ? "the shopping assistant runs without Claude" : null,
   ].filter(Boolean);
   return (
-    <div className="bg-panel px-4 py-2.5 text-center text-[13px] text-muted" role="note">
-      This is a demo: {parts.join(", and ")}. Everything else is the real product.{" "}
-      <Link href="/judges#real-vs-simulated" className="link">See what&apos;s real</Link>
+    <div className="bg-panel px-4 py-3 text-center text-sm text-text/80" role="note">
+      Demo mode: {parts.join(", and ")}.{" "}
+      <Link href="/judges#real-vs-simulated" className="link whitespace-nowrap">See what&apos;s real &gt;</Link>
     </div>
   );
 }

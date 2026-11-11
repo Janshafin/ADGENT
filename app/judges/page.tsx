@@ -107,7 +107,7 @@ export default function JudgesPage() {
         </div>
       </section>
 
-      <section className="mt-12">
+      <section id="money" className="mt-12 scroll-mt-20">
         <h2 className="display text-3xl">How one $18.04 sale settles.</h2>
         <ol className="mt-4 grid gap-2 text-sm sm:grid-cols-5">
           {[
@@ -126,7 +126,7 @@ export default function JudgesPage() {
         </ol>
       </section>
 
-      <section className="mt-12 grid gap-4 md:grid-cols-2">
+      <section id="trust" className="mt-12 grid scroll-mt-20 gap-4 md:grid-cols-2">
         {TRUST.map(([t, d]) => (
           <div key={t} className="card p-5">
             <h3 className="font-semibold">{t}</h3>
@@ -135,7 +135,7 @@ export default function JudgesPage() {
         ))}
       </section>
 
-      <section className="mt-12 grid gap-6 md:grid-cols-2">
+      <section id="claude-desktop" className="mt-12 grid scroll-mt-20 gap-6 md:grid-cols-2">
         <div>
           <h2 className="display text-3xl">Use it from Claude Desktop.</h2>
           <p className="mt-2 text-sm text-muted">

@@ -17,12 +17,7 @@ export const metadata: Metadata = {
   },
 };
 
-export const viewport: Viewport = {
-  themeColor: [
-    { media: "(prefers-color-scheme: light)", color: "#ffffff" },
-    { media: "(prefers-color-scheme: dark)", color: "#000000" },
-  ],
-};
+export const viewport: Viewport = { themeColor: "#ffffff", colorScheme: "light" };
 
 const NAV = [
   { href: "/merchant", label: "Merchants" },
@@ -32,6 +27,12 @@ const NAV = [
   { href: "/judges", label: "Tour" },
 ];
 
+const FOOTER = [
+  { title: "Explore", links: [["Merchant Copilot", "/merchant"], ["Shop with AI", "/agent"], ["Mission Control", "/control"], ["Publishers", "/publisher"]] },
+  { title: "Learn", links: [["Take the tour", "/judges"], ["What's real", "/judges#real-vs-simulated"], ["Publisher demo site", "/demo/blog"]] },
+  { title: "Project", links: [["Source code", "https://github.com/Janshafin/ADGENT"], ["MIT license", "https://github.com/Janshafin/ADGENT/blob/main/LICENSE"], ["System status", "/api/health"]] },
+];
+
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html lang="en" className={`${inter.variable} h-full`}>
@@ -39,37 +40,52 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         <a href="#main" className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-3 focus:z-50 focus:rounded-lg focus:bg-panel focus:px-3 focus:py-2">
           Skip to content
         </a>
-        <header className="sticky top-0 z-40 border-b border-[var(--hairline)] bg-[var(--nav-bg)] backdrop-blur-xl supports-[not(backdrop-filter:blur(1px))]:bg-bg">
-          <nav aria-label="Main" className="mx-auto flex h-12 max-w-[1200px] items-center gap-6 px-4 text-[13px] sm:px-6">
-            <Link href="/" className="flex flex-none items-center gap-1.5 text-[15px] font-semibold tracking-tight">
+        <header className="sticky top-0 z-40 bg-[var(--nav-bg)] backdrop-blur-xl supports-[not(backdrop-filter:blur(1px))]:bg-[#fbfbfd]">
+          <nav aria-label="Main" className="mx-auto flex h-11 max-w-[1024px] items-center justify-between gap-6 px-4 text-xs sm:px-6">
+            <Link href="/" className="flex flex-none items-center gap-1.5 text-sm font-semibold tracking-tight" aria-label="ADGENT home">
               <Mark />
               ADGENT
             </Link>
-            <div className="flex min-w-0 flex-1 items-center gap-5 overflow-x-auto">
+            <div className="flex min-w-0 flex-1 items-center gap-6 overflow-x-auto sm:justify-center sm:gap-9">
               {NAV.map((n) => (
                 <Link key={n.href} href={n.href} className="whitespace-nowrap text-text/80 transition-colors hover:text-text">
                   {n.label}
                 </Link>
               ))}
             </div>
-            <span className="hidden md:inline-flex">
+            <span className="hidden flex-none md:inline-flex">
               <ModePill />
             </span>
           </nav>
         </header>
         <ModeBanner />
         <main id="main" className="flex-1">{children}</main>
-        <footer className="bg-panel">
-          <div className="mx-auto max-w-[1200px] px-4 py-8 text-xs text-muted sm:px-6">
-            <p>
-              ADGENT was built for the PayPal AI Hackathon 2026 and is MIT licensed. Payments use PayPal&apos;s REST APIs; the cross-merchant
-              purchase history is simulated demo data.
+        <footer className="bg-panel text-xs text-muted">
+          <div className="mx-auto max-w-[1024px] px-4 py-10 sm:px-6">
+            <p className="border-b border-line pb-4 leading-relaxed">
+              ADGENT was built for the PayPal AI Hackathon 2026. Payments use PayPal&apos;s REST APIs: Orders, Payments, Payouts, Invoicing and
+              Webhooks. The cross-merchant purchase history in this demo is simulated, and without sandbox keys payments run on a built-in
+              PayPal simulator.
             </p>
-            <div className="mt-4 flex flex-wrap gap-x-6 gap-y-2 border-t border-line pt-4">
-              <Link href="/judges" className="hover:text-text">How it works</Link>
-              <Link href="/demo/blog" className="hover:text-text">Publisher demo site</Link>
-              <a href="/api/health" className="hover:text-text">System status</a>
+            <div className="grid grid-cols-2 gap-8 py-6 sm:grid-cols-3">
+              {FOOTER.map((col) => (
+                <div key={col.title}>
+                  <h3 className="mb-2 font-semibold text-text">{col.title}</h3>
+                  <ul className="space-y-2">
+                    {col.links.map(([label, href]) => (
+                      <li key={href}>
+                        {href.startsWith("http") ? (
+                          <a href={href} className="hover:text-text hover:underline">{label}</a>
+                        ) : (
+                          <Link href={href} className="hover:text-text hover:underline">{label}</Link>
+                        )}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ))}
             </div>
+            <p className="border-t border-line pt-4">Copyright © 2026 ADGENT. MIT licensed.</p>
           </div>
         </footer>
       </body>
