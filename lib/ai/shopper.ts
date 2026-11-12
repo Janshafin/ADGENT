@@ -160,6 +160,17 @@ async function claudeTurn(args: TurnArgs): Promise<TurnResult> {
 
 const ORDINALS: Record<string, number> = { first: 0, "1st": 0, second: 1, "2nd": 1, third: 2, "3rd": 2 };
 
+/** Words that carry no product meaning in a buying message ("I'll take that one, please"). */
+const FILLER = new Set(
+  "i ll im the a an to me my it its that this those these one ones please can could you would like want wanna need get got take buy order purchase checkout check out have go with for and now then look at okay ok yes sure hmm something just also instead some any them of on in really lets let us do show find search item thing".split(" "),
+);
+
+/** Does the message name something that none of the shown offers is ("I want the gym shoes")? */
+export function namesSomethingElse(text: string, offers: { title: string }[]): boolean {
+  const titles = offers.map((o) => o.title.toLowerCase()).join(" ");
+  return (text.toLowerCase().match(/[a-z]{3,}/g) ?? []).some((w) => !FILLER.has(w) && !titles.includes(w.replace(/s$/, "")));
+}
+
 /** Which shown offer does "I'll take the second one" / "buy the decaf" mean? */
 export function pickOffer(text: string, offers: { offerId: string; title: string }[]): string | null {
   if (!offers.length) return null;
@@ -173,6 +184,8 @@ export function pickOffer(text: string, offers: { offerId: string; title: string
   const words = t.match(/[a-z]{4,}/g) ?? [];
   const scored = offers.map((o) => ({ o, hits: words.filter((w) => o.title.toLowerCase().includes(w)).length })).sort((a, b) => b.hits - a.hits);
   if (scored[0].hits > 0) return scored[0].o.offerId;
+  // "Buy the gym shoes" after coffee was shown is a new request, not a pick from the old list.
+  if (namesSomethingElse(text, offers)) return null;
   return offers.length === 1 || /\b(it|that|this)\b/.test(t) ? offers[0].offerId : null;
 }
 
@@ -220,7 +233,10 @@ async function offlineTurn(args: TurnArgs): Promise<TurnResult> {
       const title = titles.find((x) => x.offerId === chosen)?.title ?? "your pick";
       return say(`Great choice. I created a PayPal order for ${title} at ${usd(r.totalCents)}. Approve it with PayPal below. Nothing is charged until you do.`, `<!--offers:${lastShown}-->`);
     }
-    return say("Which one would you like? You can say \"the first one\" or name it.", `<!--offers:${lastShown}-->`);
+    // A message naming something new falls through to a fresh search below; only a vague one gets "which one?".
+    if (!namesSomethingElse(args.userText, titles)) {
+      return say("Which one would you like? You can say \"the first one\" or name it.", `<!--offers:${lastShown}-->`);
+    }
   }
 
   const offers = await findOffers({ query: args.userText.slice(0, 300), surface: "agent", publisherId: "pub_agentnet", buyerRef: args.shopperRef, baseUrl: args.baseUrl });
@@ -230,7 +246,7 @@ async function offlineTurn(args: TurnArgs): Promise<TurnResult> {
     );
   }
   if (!offers.length) {
-    return say("I couldn't find a sponsored offer that fits. Try describing what you need, like \"espresso beans under $25\" or \"a gift for a tea lover\".");
+    return say("I couldn't find a sponsored offer that fits. The merchants advertising right now sell coffee, brewing gear, baked goods, tea and outdoor gear. Try something like \"espresso beans under $25\" or \"a gift for a tea lover\".");
   }
   ui.push({ kind: "offers", offers });
   const lines = offers.map((o, i) => `${i + 1}. ${o.title} from ${o.merchant}, ${usd(o.finalPriceCents)}${o.discountPct ? ` (${o.discountPct}% off)` : ""}`);
