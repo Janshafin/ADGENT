@@ -84,7 +84,14 @@ function offerSummary(o: SponsoredOffer) {
 }
 
 export async function shopperTurn(args: TurnArgs): Promise<TurnResult> {
-  return aiAvailable() ? claudeTurn(args) : offlineTurn(args);
+  if (!aiAvailable()) return offlineTurn(args);
+  try {
+    return await claudeTurn(args);
+  } catch (err) {
+    // A model outage, a bad key or an empty credit balance must not break shopping: the offline agent uses the same tools.
+    console.error("[adgent] AI agent failed, answering with the offline agent:", err);
+    return offlineTurn(args);
+  }
 }
 
 async function claudeTurn(args: TurnArgs): Promise<TurnResult> {

@@ -33,16 +33,22 @@ export type GridQuery = z.infer<typeof GridQuery>;
 
 export async function askLedger(question: string): Promise<GridQuery> {
   if (!aiAvailable()) return keywordQuery(question);
-  return structured({
-    system: `Translate a question about an ad attribution ledger into a grid query. Columns:\n${Object.entries(LEDGER_COLUMNS)
-      .map(([k, v]) => `- ${k}: ${v}`)
-      .join("\n")}\nRevenue questions mean type=captured. Use groupBy when the question compares categories (sum of amount and fee is shown per group).`,
-    prompt: question,
-    schema: GridQuery,
-    tier: "fast",
-    effort: "low",
-    maxTokens: 4000,
-  });
+  try {
+    return await structured({
+      system: `Translate a question about an ad attribution ledger into a grid query. Columns:\n${Object.entries(LEDGER_COLUMNS)
+        .map(([k, v]) => `- ${k}: ${v}`)
+        .join("\n")}\nRevenue questions mean type=captured. Use groupBy when the question compares categories (sum of amount and fee is shown per group).`,
+      prompt: question,
+      schema: GridQuery,
+      tier: "fast",
+      effort: "low",
+      maxTokens: 4000,
+    });
+  } catch (err) {
+    // Same answer path as having no key, so the grid still filters.
+    console.error("[adgent] ledger question fell back to keywords:", err);
+    return keywordQuery(question);
+  }
 }
 
 const EVENT_WORDS: [RegExp, GridQuery["filters"][number]["value"], string][] = [
