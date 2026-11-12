@@ -1,6 +1,8 @@
 import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
+import { Suspense } from "react";
 import Link from "next/link";
+import { NavLinks, PlainNavLinks } from "@/components/NavLinks";
 import { ModeBanner, ModePill } from "@/components/ModeBanner";
 import { SITE_DESCRIPTION, SITE_NAME, SITE_URL } from "@/lib/site";
 import "./globals.css";
@@ -56,18 +58,17 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         <a href="#main" className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-3 focus:z-50 focus:rounded-lg focus:bg-panel focus:px-3 focus:py-2">
           Skip to content
         </a>
-        <header className="sticky top-0 z-40 bg-[var(--nav-bg)] backdrop-blur-xl supports-[not(backdrop-filter:blur(1px))]:bg-[#fbfbfd]">
+        <header className="sticky top-0 z-40 bg-[var(--nav-bg)] backdrop-blur-xl backdrop-saturate-150 supports-[not(backdrop-filter:blur(1px))]:bg-[#fbfbfd]">
           <nav aria-label="Main" className="mx-auto flex h-11 max-w-[1024px] items-center justify-between gap-6 px-4 text-xs sm:px-6">
             <Link href="/" className="flex flex-none items-center gap-1.5 text-sm font-semibold tracking-tight" aria-label="ADGENT home">
               <Mark />
               ADGENT
             </Link>
-            <div className="flex min-w-0 flex-1 items-center gap-6 overflow-x-auto sm:justify-center sm:gap-9">
-              {NAV.map((n) => (
-                <Link key={n.href} href={n.href} className="whitespace-nowrap text-text/80 transition-colors hover:text-text">
-                  {n.label}
-                </Link>
-              ))}
+            {/* On a phone the links scroll sideways; the fading edge shows there is more. */}
+            <div className="flex min-w-0 flex-1 items-center gap-6 overflow-x-auto [scrollbar-width:none] max-sm:[mask-image:linear-gradient(to_right,#000_82%,transparent)] max-sm:pr-8 sm:justify-center sm:gap-9">
+              <Suspense fallback={<PlainNavLinks items={NAV} />}>
+                <NavLinks items={NAV} />
+              </Suspense>
             </div>
             <span className="hidden flex-none md:inline-flex">
               <ModePill />
@@ -91,9 +92,9 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
                     {col.links.map(([label, href]) => (
                       <li key={href}>
                         {href.startsWith("http") ? (
-                          <a href={href} className="hover:text-text hover:underline">{label}</a>
+                          <a href={href} className="transition-colors hover:text-text hover:underline">{label}</a>
                         ) : (
-                          <Link href={href} className="hover:text-text hover:underline">{label}</Link>
+                          <Link href={href} className="transition-colors hover:text-text hover:underline">{label}</Link>
                         )}
                       </li>
                     ))}

@@ -31,6 +31,9 @@
   --nav-bg: rgba(250, 250, 252, 0.8);
   --row-alt: #fafafc;
   --ease: cubic-bezier(0.28, 0.11, 0.32, 1);
+  /* Decelerating curve for things that arrive: reveals, bubbles, bars. */
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-spring: cubic-bezier(0.34, 1.4, 0.64, 1);
 }
 
 
@@ -93,6 +96,11 @@ body {
   border-radius: 28px;
 }
 .band .card, .card-white { background: var(--bg); }
+/* Cards that lead somewhere lift a hair on hover, the way a product tile does. */
+.card-hover { transition: transform 0.5s var(--ease-out); }
+@media (hover: hover) {
+  .card-hover:hover { transform: scale(1.012); }
+}
 
 .tile {
   background: var(--panel-2);
@@ -116,7 +124,7 @@ body {
 .btn:active:not(:disabled) { transform: scale(0.97); }
 .btn:disabled { opacity: 0.42; cursor: not-allowed; }
 .btn-primary { background: var(--pp-blue); color: #fff; }
-.btn-primary:hover:not(:disabled) { background: var(--pp-blue-hover); }
+.btn-primary:hover:not(:disabled) { background: var(--pp-blue-hover); box-shadow: 0 6px 16px -8px color-mix(in srgb, var(--pp-blue) 70%, transparent); }
 /* PayPal's own button colour, kept only for paying with PayPal. */
 .btn-gold { background: var(--paypal-yellow); color: #111; font-weight: 600; }
 .btn-gold:hover:not(:disabled) { background: #f2b320; }
@@ -147,7 +155,9 @@ body {
   background: var(--panel);
   color: var(--text);
 }
+button.pill, label.pill { transition: background-color 0.2s var(--ease), transform 0.2s var(--ease); cursor: pointer; }
 button.pill:hover, label.pill:hover { background: color-mix(in srgb, var(--text) 8%, var(--panel)); }
+button.pill:active { transform: scale(0.97); }
 /* On a grey card, quiet controls sit on white so they stay visible. */
 .card .pill, .card .btn-quiet { background: var(--bg); }
 .card button.pill:hover, .card .btn-quiet:hover:not(:disabled) { background: color-mix(in srgb, var(--text) 6%, var(--bg)); }
@@ -207,6 +217,11 @@ button.pill:hover, label.pill:hover { background: color-mix(in srgb, var(--text)
   letter-spacing: -0.02em;
 }
 
+/* ── Motion ─────────────────────────────────────────────────────────────────
+ * Page content never depends on an animation to be visible: load animations carry no fill
+ * mode, so content that never animates is simply shown, and scroll reveals are hidden only
+ * by script that has already run (see Reveal.tsx). Only short list staggers hold a first frame.
+ */
 @keyframes rowpulse {
   0% { background: color-mix(in srgb, var(--good) 22%, transparent); }
   100% { background: transparent; }
@@ -214,32 +229,151 @@ button.pill:hover, label.pill:hover { background: color-mix(in srgb, var(--text)
 .ag-row.row-new { animation: rowpulse 2.2s ease-out; }
 
 @keyframes shimmer {
-  0% { opacity: 0.55; }
-  50% { opacity: 1; }
-  100% { opacity: 0.55; }
+  from { background-position: 200% 0; }
+  to { background-position: -200% 0; }
 }
 .skeleton {
-  background: color-mix(in srgb, var(--text) 7%, transparent);
-  animation: shimmer 1.6s ease-in-out infinite;
+  background: linear-gradient(100deg, color-mix(in srgb, var(--text) 7%, transparent) 40%, color-mix(in srgb, var(--text) 3%, transparent) 50%, color-mix(in srgb, var(--text) 7%, transparent) 60%);
+  background-size: 200% 100%;
+  animation: shimmer 1.8s linear infinite;
   border-radius: 10px;
 }
 
-/*
- * Content settles in once, on load: a short rise. Movement only, never opacity: if a browser
- * doesn't run the animation (Safari can leave it on its first frame), the content must still
- * be fully visible, just 14px lower.
+/* Content above the fold settles in once, on load. The later steps hold still first, which staggers them. */
+@keyframes rise-1 { from { opacity: 0; transform: translateY(18px); } }
+@keyframes rise-2 { 0%, 12% { opacity: 0; transform: translateY(18px); } }
+@keyframes rise-3 { 0%, 22% { opacity: 0; transform: translateY(18px); } }
+@keyframes rise-4 { 0%, 32% { opacity: 0; transform: translateY(18px); } }
+.rise { animation: rise-1 0.9s var(--ease-out); }
+.rise-2 { animation: rise-2 1s var(--ease-out); }
+.rise-3 { animation: rise-3 1.1s var(--ease-out); }
+.rise-4 { animation: rise-4 1.25s var(--ease-out); }
+
+/* Each page eases in when you navigate to it. */
+@keyframes page-in { from { opacity: 0; transform: translateY(6px); } }
+.page-in { animation: page-in 0.45s var(--ease-out); }
+
+/* Scroll reveals: Reveal.tsx sets data-hidden on elements still below the fold, then clears it. */
+.reveal { transition: opacity 0.9s var(--ease-out), transform 0.9s var(--ease-out); transition-delay: var(--d, 0ms); }
+.reveal[data-hidden] { opacity: 0; transform: perspective(1000px) translateY(28px) rotateX(7deg); }
+.reveal { transform-origin: 50% 100%; }
+
+/* Chat bubbles and cards arriving in a conversation. */
+@keyframes bubble-in { from { opacity: 0; transform: translateY(10px) scale(0.97); } }
+.bubble-in { animation: bubble-in 0.4s var(--ease-out); }
+.bubble-in-right { transform-origin: bottom right; }
+.bubble-in-left { transform-origin: bottom left; }
+
+/* Items in a list arriving one after another: set --i on each. */
+@keyframes stagger-in { from { opacity: 0; transform: translateY(12px); } }
+.stagger { animation: stagger-in 0.55s var(--ease-out) backwards; animation-delay: calc(var(--i, 0) * 70ms); }
+
+/* The typing indicator. */
+@keyframes typing { 0%, 60%, 100% { opacity: 0.3; transform: translateY(0); } 30% { opacity: 1; transform: translateY(-3px); } }
+.typing { display: inline-flex; align-items: center; gap: 5px; border-radius: 20px; background: var(--bg); padding: 0.8rem 1rem; }
+.typing span { width: 7px; height: 7px; border-radius: 50%; background: var(--steel); animation: typing 1.2s ease-in-out infinite; }
+.typing span:nth-child(2) { animation-delay: 0.15s; }
+.typing span:nth-child(3) { animation-delay: 0.3s; }
+
+/* A bar that fills from the left when it scrolls into view. */
+.reveal .grow-x { transform-origin: left; transition: transform 1.2s var(--ease-out); transition-delay: calc(var(--d, 0ms) + var(--gd, 250ms)); }
+.reveal[data-hidden] .grow-x { transform: scaleX(0); }
+@keyframes grow-x { from { transform: scaleX(0); } }
+.grow-x-now { transform-origin: left; animation: grow-x 1s var(--ease-out); }
+
+/* Success mark: the disc pops, then the tick draws itself. */
+@keyframes pop { 0% { transform: scale(0.6); opacity: 0; } 100% { transform: scale(1); opacity: 1; } }
+@keyframes draw { 0%, 35% { stroke-dashoffset: 48; } 100% { stroke-dashoffset: 0; } }
+.pop { animation: pop 0.45s var(--ease-spring); transform-origin: center; }
+.draw { stroke-dasharray: 48; animation: draw 0.75s var(--ease-out); }
+
+/* The "live" dot breathes. */
+@keyframes ping-soft { 0% { transform: scale(1); opacity: 0.55; } 100% { transform: scale(2.8); opacity: 0; } }
+.live-dot { position: relative; display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--good); }
+.live-dot::after { content: ""; position: absolute; inset: 0; border-radius: 50%; background: var(--good); animation: ping-soft 1.8s ease-out infinite; }
+
+/* Toast rises from the bottom edge. */
+@keyframes toast-in { from { opacity: 0; transform: translateY(14px) scale(0.98); } }
+.toast { animation: toast-in 0.4s var(--ease-out); box-shadow: 0 12px 40px -12px rgb(0 0 0 / 0.25), inset 0 0 0 1px var(--hairline); }
+
+/* A number that just changed flashes once. */
+@keyframes tick { 0% { color: var(--pp-blue); } 100% { color: inherit; } }
+.tick { animation: tick 1.2s ease-out; }
+
+/* Main nav: the current page carries a short underline that slides in. */
+.nav-link { position: relative; padding: 0.75rem 0; color: color-mix(in srgb, var(--text) 78%, transparent); transition: color 0.2s var(--ease); white-space: nowrap; }
+.nav-link:hover, .nav-link[aria-current="page"] { color: var(--text); }
+.nav-link::after { content: ""; position: absolute; left: 0; right: 0; bottom: 0.45rem; height: 1.5px; border-radius: 2px; background: var(--text); transform: scaleX(0); transform-origin: center; transition: transform 0.35s var(--ease-out); }
+.nav-link[aria-current="page"]::after { transform: scaleX(1); }
+
+/* Disclosure rows ("Why am I seeing this?"): the marker turns as it opens. */
+details > summary { list-style: none; cursor: pointer; }
+details > summary::-webkit-details-marker { display: none; }
+details > summary::before { content: "\203A"; display: inline-block; margin-right: 0.4em; transition: transform 0.25s var(--ease); }
+details[open] > summary::before { transform: rotate(90deg); }
+details[open] > :not(summary) { animation: stagger-in 0.3s var(--ease-out); }
+
+/* ── Depth ──────────────────────────────────────────────────────────────────
+ * Real 3D, used sparingly: cards tilt toward the pointer (Tilt.tsx sets --rx/--ry), their
+ * contents sit at different depths, and product shots swing up into place as they are revealed.
  */
-@keyframes rise {
-  from { transform: translateY(14px); }
-  to { transform: none; }
+.tilt {
+  position: relative;
+  transform: perspective(1100px) rotateX(var(--rx, 0deg)) rotateY(var(--ry, 0deg));
+  transform-style: preserve-3d;
+  transition: transform 0.7s var(--ease-out);
 }
-.rise { animation: rise 0.7s cubic-bezier(0.28, 0.11, 0.32, 1) backwards; }
-.rise-2 { animation-delay: 0.08s; }
-.rise-3 { animation-delay: 0.16s; }
-.rise-4 { animation-delay: 0.26s; }
+.tilt[data-tilting] { transition: transform 0.12s linear; }
+/* A soft light that follows the pointer across the surface. */
+.tilt::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  background: radial-gradient(380px circle at var(--mx, 50%) var(--my, 50%), color-mix(in srgb, var(--pp-blue) 9%, transparent), transparent 65%);
+  opacity: 0;
+  transition: opacity 0.4s var(--ease);
+}
+.tilt[data-tilting]::after { opacity: 1; }
+/* Layers inside a tilting card: higher numbers float closer to the viewer. */
+.z-lift-1 { transform: translateZ(18px); }
+.z-lift-2 { transform: translateZ(38px); }
+.z-lift-3 { transform: translateZ(60px); }
+.z-sink-1 { transform: translateZ(-34px); }
+.z-sink-2 { transform: translateZ(-68px); }
+
+/* The hero card drifts slowly in 3D when nobody is touching it. */
+@keyframes drift {
+  0%, 100% { transform: rotateX(3deg) rotateY(-4deg); }
+  50% { transform: rotateX(-2deg) rotateY(4deg); }
+}
+.drift { transform-style: preserve-3d; animation: drift 11s ease-in-out infinite; }
+.tilt[data-tilting] .drift { animation-play-state: paused; }
+
+/* The hero card unfolds toward the viewer on load. */
+@keyframes unfold { 0%, 25% { opacity: 0; transform: perspective(1200px) rotateX(38deg) translateY(60px) scale(0.92); } }
+.unfold { animation: unfold 1.5s var(--ease-out); transform-origin: 50% 100%; }
+
+/* Product shots rest at an angle and swing up from flat when their card is revealed. */
+.pose {
+  transform: perspective(1400px) rotateX(var(--px, 0deg)) rotateY(var(--py, 0deg));
+  transform-origin: 50% 100%;
+  transition: transform 1.5s var(--ease-out);
+  transition-delay: calc(var(--d, 0ms) + 120ms);
+}
+.reveal[data-hidden] .pose { transform: perspective(1400px) rotateX(34deg) translateY(56px) scale(0.93); }
+@media (hover: hover) {
+  .reveal:hover .pose { transform: perspective(1400px) rotateX(0deg) rotateY(0deg) translateY(-6px); transition-duration: 0.8s; transition-delay: 0ms; }
+}
 
 @media (prefers-reduced-motion: reduce) {
-  .ag-row.row-new, .skeleton, .animate-ping, .animate-bounce, .rise { animation: none; }
-  .btn:active:not(:disabled) { transform: none; }
-  * { scroll-behavior: auto !important; }
+  *, *::before, *::after { animation-duration: 0.01ms !important; animation-delay: 0ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; transition-delay: 0ms !important; scroll-behavior: auto !important; }
+  .reveal[data-hidden] { opacity: 1; transform: none; }
+  .reveal[data-hidden] .grow-x { transform: none; }
+  .btn:active:not(:disabled), .card-hover:hover { transform: none; }
+  .tilt, .drift, .pose, .reveal[data-hidden] .pose { transform: none !important; animation: none !important; }
 }
+
+/* Children of a revealed block arriving in sequence (set --i): starts when the block is revealed. */
+.reveal:not([data-hidden]) .seq { animation: stagger-in 0.6s var(--ease-out) backwards; animation-delay: calc(350ms + var(--i, 0) * 200ms); }

@@ -164,6 +164,9 @@ const ORDINALS: Record<string, number> = { first: 0, "1st": 0, second: 1, "2nd":
 export function pickOffer(text: string, offers: { offerId: string; title: string }[]): string | null {
   if (!offers.length) return null;
   const t = text.toLowerCase();
+  // A full product name wins over any digit inside it ("Subscription (2 bags)" is not "the second one").
+  const named = offers.find((o) => o.title && t.includes(o.title.toLowerCase()));
+  if (named) return named.offerId;
   for (const [word, i] of Object.entries(ORDINALS)) if (new RegExp(`\\b${word}\\b`).test(t) && offers[i]) return offers[i].offerId;
   const num = /#?\b([1-3])\b/.exec(t);
   if (num && offers[Number(num[1]) - 1]) return offers[Number(num[1]) - 1].offerId;

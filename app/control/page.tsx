@@ -16,10 +16,12 @@ import type { OrderRow } from "@/app/api/orders/route";
 import type { LedgerRow } from "@/lib/adgent/ledger";
 import type { CampaignMetrics } from "@/lib/adgent/metrics";
 import type { GridQuery } from "@/lib/ai/ask";
+import { CountUp } from "@/components/CountUp";
+import { Tilt } from "@/components/Tilt";
 
 ModuleRegistry.registerModules([AllCommunityModule]);
 
-// Grid colours come from the same tokens as the page, so it follows light and dark mode.
+// Grid colours come from the same tokens as the page.
 const theme = themeQuartz.withParams({
   backgroundColor: "var(--bg)",
   foregroundColor: "var(--text)",
@@ -80,6 +82,8 @@ const TYPE_STYLE: Record<string, { label: string; cls: string }> = {
 };
 
 const SURFACE: Record<string, string> = { agent: "AI assistant", widget: "Publisher site", winback: "Win-back link" };
+const GROUP_LABEL: Record<string, string> = { campaignName: "Campaign", merchantName: "Merchant", surface: "Surface", type: "Event", publisherName: "Publisher" };
+const plural = (n: number, one: string, many = `${one}s`) => `${n.toLocaleString("en-US")} ${n === 1 ? one : many}`;
 
 export default function MissionControl() {
   const [rows, setRows] = useState<LedgerRow[]>([]);
@@ -248,13 +252,13 @@ export default function MissionControl() {
   const orderCols = useMemo<ColDef<OrderRow>[]>(
     () => [
       { field: "createdAt", headerName: "Time", width: 110, sort: "desc", valueFormatter: (p) => (p.value ? new Date(p.value).toLocaleTimeString() : "") },
-      { field: "status", headerName: "Status", width: 105, cellRenderer: (p: { value: string }) => <span className={ORDER_STATUS[p.value]}>{p.value}</span> },
+      { field: "status", headerName: "Status", width: 115, cellRenderer: (p: { value: string }) => <span className={`capitalize ${ORDER_STATUS[p.value] ?? ""}`}>{p.value}</span> },
       { field: "productTitle", headerName: "Product", flex: 1.3, minWidth: 180 },
       { field: "surface", headerName: "Surface", width: 120, valueFormatter: (p) => (p.value ? SURFACE[p.value] ?? p.value : "") },
       { field: "sale", headerName: "Sale", width: 95, type: "rightAligned", valueFormatter: (p) => fmtUsd(p.value ?? 0) },
       { field: "fee", headerName: "Ad fee", width: 90, type: "rightAligned", valueFormatter: (p) => fmtUsd(p.value ?? 0), cellClass: "text-gold" },
-      { field: "merchantNet", headerName: "Merchant", width: 100, type: "rightAligned", valueFormatter: (p) => fmtUsd(p.value ?? 0), headerTooltip: "Paid to the merchant by PayPal Payouts after the refund hold" },
-      { field: "publisherShare", headerName: "Publisher", width: 100, type: "rightAligned", valueFormatter: (p) => fmtUsd(p.value ?? 0) },
+      { field: "merchantNet", headerName: "Merchant", width: 125, type: "rightAligned", valueFormatter: (p) => fmtUsd(p.value ?? 0), headerTooltip: "Paid to the merchant by PayPal Payouts after the refund hold" },
+      { field: "publisherShare", headerName: "Publisher", width: 125, type: "rightAligned", valueFormatter: (p) => fmtUsd(p.value ?? 0) },
       { field: "captureId", headerName: "PayPal capture", width: 170, cellClass: "font-mono text-xs" },
       { field: "payoutId", headerName: "Payout batch", width: 160, cellClass: "font-mono text-xs" },
       {
@@ -378,7 +382,7 @@ export default function MissionControl() {
                   setAdminTokenState(e.target.value);
                   setAdminToken(e.target.value);
                 }}
-                className="w-40 rounded-md border border-line bg-bg px-2 py-1.5 text-sm"
+                className="field !w-44 !px-3.5 !py-1.5 !text-sm"
                 autoComplete="off"
               />
             </label>
@@ -417,12 +421,12 @@ export default function MissionControl() {
 
       {/* PayPal P&L */}
       <section className="mt-5 grid grid-cols-2 gap-3 lg:grid-cols-6">
-        <Kpi label="Sales through PayPal" value={econ ? fmtUsd(econ.brandedCheckoutTpv) : null} hint={`${econ?.liveSales ?? 0} sales`} />
-        <Kpi label="Ad fee revenue" value={econ ? fmtUsd(econ.adFeeRevenue) : null} hint="Charged only on sales" accent="gold" />
-        <Kpi label="Paid out via Payouts" value={econ ? fmtUsd(econ.merchantPayoutsPaid + econ.publisherPayoutsPaid) : null} hint={econ ? `${econ.settledSales} settled, ${econ.awaitingPayout} in refund window` : "Merchants and publishers"} />
-        <Kpi label="Processing revenue" value={econ ? fmtUsd(econ.processingRevenue) : null} hint="Estimated at 3.49% + 49¢" />
-        <Kpi label="Pay Later eligible" value={econ ? String(econ.payLaterEligibleSales) : null} hint="Sales of $30 or more" />
-        <Kpi label="PayPal revenue per ad dollar" value={econ ? (econ.perAdDollar ? `$${econ.perAdDollar.toFixed(2)}` : "—") : null} hint="Ad fees plus processing" accent="good" />
+        <Kpi i={0} label="Sales through PayPal" value={econ?.brandedCheckoutTpv} format={fmtUsd} hint={econ ? plural(econ.liveSales, "sale") : "Live sales"} />
+        <Kpi i={1} label="Ad fee revenue" value={econ?.adFeeRevenue} format={fmtUsd} hint="Charged only on sales" accent="gold" />
+        <Kpi i={2} label="Paid out via Payouts" value={econ ? econ.merchantPayoutsPaid + econ.publisherPayoutsPaid : undefined} format={fmtUsd} hint={econ ? `${econ.settledSales} settled, ${econ.awaitingPayout} in refund window` : "Merchants and publishers"} />
+        <Kpi i={3} label="Processing revenue" value={econ?.processingRevenue} format={fmtUsd} hint="Estimated at 3.49% + 49¢" />
+        <Kpi i={4} label="Pay Later eligible" value={econ?.payLaterEligibleSales} hint="Sales of $30 or more" />
+        <Kpi i={5} label="PayPal revenue per ad dollar" value={econ?.perAdDollar} format={(n) => (econ?.perAdDollar ? fmtUsd(n) : "No sales yet")} hint="Ad fees plus processing" accent="good" />
       </section>
 
       {/* Ask your ads */}
@@ -438,26 +442,28 @@ export default function MissionControl() {
             value={question}
             onChange={(e) => setQuestion(e.target.value)}
             placeholder="Ask your ads anything, e.g. which campaign made the most from AI agents?"
-            className="flex-1 rounded-full border border-line bg-bg px-5 py-2.5 text-sm outline-none focus:border-pp"
+            className="field flex-1 !py-2.5 !text-[15px]"
             aria-label="Ask the ledger"
+            maxLength={300}
           />
           <button className="btn btn-primary" disabled={asking}>{asking ? "Thinking…" : "Ask"}</button>
           {query && <button type="button" className="btn btn-ghost" onClick={clearQuery}>Clear</button>}
         </form>
         <div className="mt-3 flex flex-wrap gap-2">
           {SUGGESTIONS.map((s) => (
-            <button key={s} className="pill hover:text-text" onClick={() => { setQuestion(s); void ask(s); }}>{s}</button>
+            <button key={s} type="button" className="pill" disabled={asking} onClick={() => { setQuestion(s); void ask(s); }}>{s}</button>
           ))}
           <label className="pill ml-auto cursor-pointer select-none">
-            <input type="checkbox" checked={showNoise} onChange={(e) => setShowNoise(e.target.checked)} className="accent-pp" /> show impressions
+            <input type="checkbox" checked={showNoise} onChange={(e) => setShowNoise(e.target.checked)} className="accent-pp" /> Show impressions
           </label>
         </div>
-        {query && <p className="mt-3 text-sm text-muted">{query.explanation}</p>}
-        {grouped && (
-          <div className="mt-3 overflow-x-auto">
+        {query && <p className="bubble-in mt-3 text-sm text-muted">{query.explanation}</p>}
+        {grouped && grouped.length === 0 && <p className="mt-2 text-sm text-muted">Nothing in the ledger matches yet.</p>}
+        {grouped && grouped.length > 0 && (
+          <div className="bubble-in mt-3 overflow-x-auto">
             <table className="w-full text-sm">
               <thead className="text-left text-muted">
-                <tr><th className="py-1 pr-4 font-normal">{query?.groupBy.join(" · ")}</th><th className="py-1 pr-4 font-normal">Events</th><th className="py-1 pr-4 font-normal">Sales</th><th className="py-1 pr-4 font-normal">Revenue</th><th className="py-1 font-normal">Ad fees</th></tr>
+                <tr><th className="py-1 pr-4 font-normal">{query?.groupBy.map((g) => GROUP_LABEL[g] ?? g).join(", ")}</th><th className="py-1 pr-4 font-normal">Events</th><th className="py-1 pr-4 font-normal">Sales</th><th className="py-1 pr-4 font-normal">Revenue</th><th className="py-1 font-normal">Ad fees</th></tr>
               </thead>
               <tbody>
                 {grouped.map((g) => (
@@ -478,8 +484,8 @@ export default function MissionControl() {
       {/* Budget guardian */}
       {campaigns.some((c) => c.advice) && (
         <section className="mt-5 grid gap-3 md:grid-cols-2">
-          {campaigns.filter((c) => c.advice).map((c) => (
-            <div key={c.campaignId} className="card p-5">
+          {campaigns.filter((c) => c.advice).map((c, i) => (
+            <div key={c.campaignId} className="card stagger p-5" style={{ "--i": i } as React.CSSProperties}>
               <div className="meta">Budget guardian</div>
               <div className="mt-1 font-medium">{c.name}</div>
               <p className="mt-1 text-sm text-muted">{c.advice}</p>
@@ -511,8 +517,8 @@ export default function MissionControl() {
         <p className="meta mb-4 mt-1">Every sale and where each dollar went.</p>
         {orders.length === 0 ? (
           <div className="card p-6 text-sm text-muted">
-            No live sales yet. <a href="/agent" className="text-pp-sky hover:underline">Buy something through the AI agent</a> or the{" "}
-            <a href="/demo/blog" className="text-pp-sky hover:underline">publisher demo</a>, and it lands here in real time.
+            No live sales yet. <a href="/agent" className="link">Buy something through the AI agent</a> or the{" "}
+            <a href="/demo/blog" className="link">publisher demo</a>, and it lands here in real time.
           </div>
         ) : (
           <div style={{ height: Math.min(440, 48 + orders.length * 44) }}>
@@ -531,7 +537,7 @@ export default function MissionControl() {
       <section className="mt-12">
         <h2 className="flex items-center gap-2.5 text-2xl font-semibold tracking-tight">
           Live ledger
-          <span className="inline-flex h-2 w-2 rounded-full bg-good" aria-label="live" />
+          <span className="live-dot" role="img" aria-label="Live" />
         </h2>
         <p className="meta mb-4 mt-1">Each step of every sale: impression, click, PayPal order, capture, fee, payout.</p>
         <div style={{ height: 560 }}>
@@ -552,8 +558,10 @@ export default function MissionControl() {
       </section>
 
       {toast && (
-        <div role="status" className="fixed bottom-6 left-1/2 z-50 max-w-[90vw] -translate-x-1/2 rounded-full border border-line bg-panel-2 px-5 py-3 text-sm shadow-2xl">
-          {toast}
+        <div className="pointer-events-none fixed inset-x-0 bottom-6 z-50 flex justify-center px-4">
+          <div role="status" key={toast} className="toast pointer-events-auto max-w-2xl rounded-[22px] bg-bg px-5 py-3 text-sm">
+            {toast}
+          </div>
         </div>
       )}
     </div>
@@ -584,16 +592,18 @@ function matchesFilter(r: LedgerRow, f: GridQuery["filters"][number]): boolean {
   }
 }
 
-function Kpi({ label, value, hint, accent }: { label: string; value: string | null; hint: string; accent?: "gold" | "good" }) {
+function Kpi({ i, label, value, format, hint, accent }: { i: number; label: string; value: number | undefined; format?: (n: number) => string; hint: string; accent?: "gold" | "good" }) {
   return (
-    <div className="card p-5">
+    <Tilt max={8} className="card stagger p-5" style={{ "--i": i } as React.CSSProperties}>
       <div className="text-sm text-muted">{label}</div>
-      {value === null ? (
-        <div className="skeleton mt-2 h-7 w-24" />
+      {value === undefined ? (
+        <div className="skeleton mt-2 h-9 w-24" />
       ) : (
-        <div className={`stat-num display mt-2 text-3xl ${accent === "gold" ? "text-gold" : accent === "good" ? "text-good" : ""}`}>{value}</div>
+        <div className={`stat-num display z-lift-2 mt-2 text-3xl ${accent === "gold" ? "text-gold" : accent === "good" ? "text-good" : ""}`}>
+          <CountUp value={value} format={format} />
+        </div>
       )}
       <div className="meta mt-1">{hint}</div>
-    </div>
+    </Tilt>
   );
 }

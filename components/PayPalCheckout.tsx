@@ -23,18 +23,25 @@ declare global {
 
 const SDK_ID = "paypal-js-sdk";
 
+let sdkPromise: Promise<PayPalNamespace> | null = null;
+
+/** Loads the PayPal JS SDK once per page. A failed load clears itself so the next button retries. */
 function loadSdk(clientId: string): Promise<PayPalNamespace> {
   if (window.paypal) return Promise.resolve(window.paypal);
-  return new Promise((resolve, reject) => {
-    const existing = document.getElementById(SDK_ID) as HTMLScriptElement | null;
-    const s = existing ?? document.createElement("script");
+  sdkPromise ??= new Promise<PayPalNamespace>((resolve, reject) => {
+    document.getElementById(SDK_ID)?.remove();
+    const s = document.createElement("script");
     s.id = SDK_ID;
     s.src = `https://www.paypal.com/sdk/js?client-id=${encodeURIComponent(clientId)}&currency=USD&intent=capture&components=buttons,messages&enable-funding=paylater`;
     s.async = true;
     s.addEventListener("load", () => (window.paypal ? resolve(window.paypal) : reject(new Error("PayPal SDK failed to initialise"))));
-    s.addEventListener("error", () => reject(new Error("Could not load the PayPal SDK")));
-    if (!existing) document.body.appendChild(s);
+    s.addEventListener("error", () => reject(new Error("Could not load the PayPal SDK. Check your connection and try again.")));
+    document.body.appendChild(s);
+  }).catch((e) => {
+    sdkPromise = null;
+    throw e;
   });
+  return sdkPromise;
 }
 
 type Props = {
@@ -56,11 +63,11 @@ type Props = {
 export function PayPalCheckout(props: Props) {
   const status = useStatus();
   const clientId = process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID;
-  if (!status) return <div className="skeleton h-[120px]" aria-label="Loading checkout" />;
+  if (!status) return <div className="skeleton h-11 !rounded-full" aria-label="Loading checkout" />;
   if (status.paypalMode === "simulated") return <SimulatedCheckout {...props} />;
   if (!clientId) {
     return (
-      <p className="rounded-xl border border-warn/40 bg-warn/10 p-4 text-sm text-warn">
+      <p className="rounded-2xl bg-warn/10 p-4 text-sm text-warn">
         Set <code>NEXT_PUBLIC_PAYPAL_CLIENT_ID</code> to show PayPal buttons.
       </p>
     );
@@ -96,7 +103,7 @@ function SmartButtons(props: Props & { clientId: string }) {
       .then(async (paypal) => {
         if (cancelled || !buttonsRef.current) return;
         if (paypal.Messages && messageRef.current) {
-          await paypal.Messages({ amount: propsRef.current.amountCents / 100, placement: "product", style: { layout: "text", text: { color: "white" } } }).render(messageRef.current);
+          await paypal.Messages({ amount: propsRef.current.amountCents / 100, placement: "product", style: { layout: "text", text: { color: "black" } } }).render(messageRef.current);
         }
         instance = paypal.Buttons({
           style: { layout: "vertical", shape: "pill", color: "gold", label: "paypal" },
@@ -122,7 +129,7 @@ function SmartButtons(props: Props & { clientId: string }) {
   return (
     <div>
       <div ref={messageRef} className="mb-3 min-h-5" />
-      <div ref={buttonsRef} className="min-h-[150px] rounded-xl bg-white p-3" />
+      <div ref={buttonsRef} className="min-h-[150px]" />
       {error && <p role="alert" className="mt-3 text-sm text-bad">{error}</p>}
     </div>
   );
@@ -151,8 +158,9 @@ function SimulatedCheckout(props: Props) {
 
   const label = { idle: "Pay with PayPal", creating: "Creating PayPal order…", approving: "Approving…", capturing: "Capturing payment…" }[step];
   return (
-    <div className="rounded-xl border border-line bg-panel-2 p-4">
+    <div>
       <button type="button" onClick={pay} disabled={step !== "idle"} className="btn btn-gold w-full justify-center" aria-busy={step !== "idle"}>
+        {step !== "idle" && <span className="h-4 w-4 animate-spin rounded-full border-2 border-black/20 border-t-black/70" aria-hidden />}
         {label}
       </button>
       {props.amountCents >= 3000 && <p className="mt-2 text-center text-xs text-muted">Pay in 4 interest-free payments of {(props.amountCents / 400).toLocaleString("en-US", { style: "currency", currency: "USD" })} available</p>}

@@ -32,18 +32,7 @@ const GridQuery = z.object({
 export type GridQuery = z.infer<typeof GridQuery>;
 
 export async function askLedger(question: string): Promise<GridQuery> {
-  if (!aiAvailable()) {
-    const q = question.toLowerCase();
-    const filters: GridQuery["filters"] = [];
-    for (const s of ["agent", "widget", "winback"]) if (q.includes(s)) filters.push({ column: "surface", op: "equals", value: s, valueTo: null });
-    if (q.includes("sale") || q.includes("revenue") || q.includes("captur")) filters.push({ column: "type", op: "equals", value: "captured", valueTo: null });
-    return {
-      filters,
-      groupBy: q.includes("campaign") ? ["campaignName"] : q.includes("merchant") ? ["merchantName"] : [],
-      sort: { column: "ts", dir: "desc" },
-      explanation: "Keyword filter (set ANTHROPIC_API_KEY for full natural-language queries).",
-    };
-  }
+  if (!aiAvailable()) return keywordQuery(question);
   return structured({
     system: `Translate a question about an ad attribution ledger into a grid query. Columns:\n${Object.entries(LEDGER_COLUMNS)
       .map(([k, v]) => `- ${k}: ${v}`)
@@ -54,4 +43,64 @@ export async function askLedger(question: string): Promise<GridQuery> {
     effort: "low",
     maxTokens: 4000,
   });
+}
+
+const EVENT_WORDS: [RegExp, GridQuery["filters"][number]["value"], string][] = [
+  [/refund/, "refunded", "refunds"],
+  [/payout|paid out/, "payout_sent", "payouts"],
+  [/invoice/, "invoice_sent", "invoices"],
+  [/\b(ad )?fees?\b/, "fee_collected", "ad fees"],
+  [/click/, "click", "clicks"],
+  [/impression/, "impression", "impressions"],
+  [/sale|revenue|captur|sold|bought|made the most/, "captured", "sales"],
+];
+const SURFACE_WORDS: [RegExp, string, string][] = [
+  [/agent|assistant|\bai\b/, "agent", "AI assistants"],
+  [/widget|publisher site|blog/, "widget", "publisher sites"],
+  [/win-?back/, "winback", "win-back links"],
+];
+const GROUP_WORDS: [RegExp, GridQuery["groupBy"][number], string][] = [
+  [/(by|per|each|which) surface/, "surface", "surface"],
+  [/(by|per|each|which) campaign/, "campaignName", "campaign"],
+  [/(by|per|each|which) merchant/, "merchantName", "merchant"],
+  [/(by|per|each|which) publisher/, "publisherName", "publisher"],
+];
+
+/** Offline answer: the common questions (event, surface, amount, grouping) read from keywords, no model call. */
+export function keywordQuery(question: string): GridQuery {
+  const q = question.toLowerCase();
+  const filters: GridQuery["filters"] = [];
+  const said: string[] = [];
+
+  const event = EVENT_WORDS.find(([re]) => re.test(q));
+  if (event) filters.push({ column: "type", op: "equals", value: event[1], valueTo: null });
+  said.push(event ? event[2] : "every event");
+
+  const surface = SURFACE_WORDS.find(([re]) => re.test(q));
+  if (surface) {
+    filters.push({ column: "surface", op: "equals", value: surface[1], valueTo: null });
+    said.push(`from ${surface[2]}`);
+  }
+
+  const column = event?.[1] === "fee_collected" ? "fee" : "amount";
+  const over = /(?:over|above|more than|at least|>)\s*\$?(\d+(?:\.\d+)?)/.exec(q);
+  const under = /(?:under|below|less than|at most|<)\s*\$?(\d+(?:\.\d+)?)/.exec(q);
+  if (over) {
+    filters.push({ column, op: "greaterThan", value: Number(over[1]), valueTo: null });
+    said.push(`over $${over[1]}`);
+  }
+  if (under) {
+    filters.push({ column, op: "lessThan", value: Number(under[1]), valueTo: null });
+    said.push(`under $${under[1]}`);
+  }
+
+  const group = GROUP_WORDS.find(([re]) => re.test(q));
+  if (group) said.push(`totalled by ${group[2]}`);
+
+  return {
+    filters,
+    groupBy: group ? [group[1]] : [],
+    sort: { column: /most|top|highest|largest|biggest/.test(q) ? column : "ts", dir: "desc" },
+    explanation: `Showing ${said.join(", ")}. Matched by keyword, because no AI model is connected on this deployment.`,
+  };
 }

@@ -81,7 +81,15 @@ export async function findOffers(args: {
 }): Promise<SponsoredOffer[]> {
   const all = await activeCandidates();
   const eligible = all.filter((c) => !inHoldout(c.campaignId, args.buyerRef, c.holdoutPct));
-  const ranked = await rankOffers(args.query, eligible, args.limit ?? 3);
+  const limit = args.limit ?? 3;
+  // Two campaigns can advertise the same product. The shopper sees it once, from the higher-ranked campaign.
+  const seenProducts = new Set<string>();
+  const ranked = (await rankOffers(args.query, eligible, limit * 3))
+    .filter((r) => {
+      const productId = r.offerId.split(":")[1];
+      return !seenProducts.has(productId) && seenProducts.add(productId);
+    })
+    .slice(0, limit);
 
   const out = ranked.map((r): SponsoredOffer => {
     const c = eligible.find((x) => x.offerId === r.offerId)!;

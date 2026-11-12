@@ -1,11 +1,13 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { api, fmtCents, fmtUsd } from "@/lib/client/api";
 import type { CampaignProposal } from "@/lib/ai/campaigns";
 import type { MerchantInsights } from "@/lib/graph/audiences";
 import type { CampaignMetrics } from "@/lib/adgent/metrics";
+import { CountUp } from "@/components/CountUp";
+import { Tilt } from "@/components/Tilt";
 
 type MerchantRow = { id: string; name: string; emoji: string; category: string; products: { id: string; title: string; priceCents: number; image: string }[] };
 type Insights = Omit<MerchantInsights, "audiences"> & { audiences: Omit<MerchantInsights["audiences"][number], "buyerIds">[] };
@@ -20,6 +22,9 @@ export default function MerchantPage() {
   const [source, setSource] = useState<string>("");
   const [thinking, setThinking] = useState(false);
   const [launched, setLaunched] = useState<Record<number, string>>({});
+  const [launching, setLaunching] = useState<number | null>(null);
+  // State updates land after the click handler returns, so two clicks in one frame need a ref to see each other.
+  const launchLock = useRef(false);
   const [campaigns, setCampaigns] = useState<CampaignMetrics[]>([]);
   const [error, setError] = useState<string | null>(null);
 
@@ -36,6 +41,7 @@ export default function MerchantPage() {
 
   function selectMerchant(id: string) {
     setMerchantId(id);
+    setError(null);
     setInsights(null);
     setProposals(null);
     setLaunched({});
@@ -47,6 +53,7 @@ export default function MerchantPage() {
 
   async function generate() {
     setThinking(true);
+    setLaunched({});
     setError(null);
     try {
       const r = await api<{ proposals: CampaignProposal[]; source: string }>("/api/campaigns/propose", { json: { merchantId } });
@@ -60,12 +67,20 @@ export default function MerchantPage() {
   }
 
   async function launch(i: number, p: CampaignProposal) {
+    // One launch at a time: a double click must not create the campaign twice.
+    if (launchLock.current || launched[i]) return;
+    launchLock.current = true;
+    setLaunching(i);
+    setError(null);
     try {
       const r = await api<{ id: string }>("/api/campaigns", { json: { merchantId, proposal: p } });
       setLaunched((s) => ({ ...s, [i]: r.id }));
       refreshCampaigns();
     } catch (e) {
       setError((e as Error).message);
+    } finally {
+      launchLock.current = false;
+      setLaunching(null);
     }
   }
 
@@ -92,21 +107,23 @@ export default function MerchantPage() {
         </select>
       </div>
 
-      {error && <div className="mt-4 rounded-xl border border-bad/40 bg-bad/10 px-4 py-3 text-sm text-bad">{error}</div>}
+      {error && <div role="alert" className="bubble-in mt-4 rounded-2xl bg-bad/10 px-4 py-3 text-sm text-bad">{error}</div>}
 
       {/* KPIs from PayPal sales */}
       <section className="mt-8 grid grid-cols-2 gap-3 md:grid-cols-5">
-        {[
-          ["PayPal customers", insights?.customers.toLocaleString()],
-          ["Orders (6 mo)", insights?.orders.toLocaleString()],
-          ["Revenue", insights ? fmtCents(insights.revenueCents, 0) : undefined],
-          ["Repeat rate", insights ? `${Math.round(insights.repeatRate * 100)}%` : undefined],
-          ["Reorder cycle", insights ? (insights.avgCycleDays ? `${insights.avgCycleDays} days` : "one-off") : undefined],
-        ].map(([k, v]) => (
-          <div key={k} className="card p-5">
+        {(
+          [
+            ["PayPal customers", insights?.customers, undefined],
+            ["Orders (6 mo)", insights?.orders, undefined],
+            ["Revenue", insights?.revenueCents, (n: number) => fmtCents(n, 0)],
+            ["Repeat rate", insights ? insights.repeatRate * 100 : undefined, (n: number) => `${Math.round(n)}%`],
+            ["Reorder cycle", insights ? insights.avgCycleDays ?? 0 : undefined, (n: number) => (insights?.avgCycleDays ? `${Math.round(n)} days` : "one-off")],
+          ] as const
+        ).map(([k, v, format], i) => (
+          <Tilt key={k} max={8} className="card stagger p-5" style={{ "--i": i } as React.CSSProperties}>
             <div className="text-sm text-muted">{k}</div>
-            {v === undefined ? <div className="skeleton mt-2 h-8 w-20" /> : <div className="stat-num display mt-2 text-3xl">{v}</div>}
-          </div>
+            {v === undefined ? <div className="skeleton mt-2 h-8 w-20" /> : <div className="stat-num display z-lift-2 mt-2 text-3xl"><CountUp key={merchantId} value={v} format={format} /></div>}
+          </Tilt>
         ))}
       </section>
 
@@ -116,8 +133,8 @@ export default function MerchantPage() {
           <h2 className="text-xl font-semibold tracking-tight">Who to reach</h2>
           <p className="mt-1 text-sm text-muted">Built from the PayPal transaction graph across merchants (simulated history in this demo).</p>
           <ul className="mt-4 space-y-3">
-            {insights?.audiences.map((a) => (
-              <li key={a.key} className="tile p-4">
+            {insights?.audiences.map((a, i) => (
+              <li key={a.key} className="tile stagger p-4" style={{ "--i": i } as React.CSSProperties}>
                 <div className="flex items-center justify-between gap-3">
                   <span className="font-medium">{a.label}</span>
                   <span className="stat-num text-lg font-semibold text-pp-sky">{a.size}</span>
@@ -127,10 +144,10 @@ export default function MerchantPage() {
                   Average lifetime value {fmtCents(a.avgLtvCents)}. {(a.baselineConversion * 100).toFixed(1)}% buy within 30 days without an ad.
                 </p>
               </li>
-            )) ?? Array.from({ length: 3 }, (_, i) => <li key={i} className="skeleton h-24" />)}
+            )) ?? Array.from({ length: 3 }, (_, i) => <li key={i} className="skeleton h-24 !rounded-[20px]" />)}
           </ul>
           {insights && insights.affinities[0] && (
-            <p className="tile mt-4 p-4 text-sm">
+            <p className="tile bubble-in mt-4 p-4 text-sm">
               {Math.round(insights.affinities[0].overlapPct * 100)}% of your buyers also shop at {insights.affinities[0].merchantName}, so its
               customers are a natural next audience.
             </p>
@@ -138,10 +155,10 @@ export default function MerchantPage() {
         </div>
 
         {/* AI proposals */}
-        <div className="card p-5">
+        <div className="card p-6">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
-              <h2 className="font-semibold">AI campaign builder</h2>
+              <h2 className="text-xl font-semibold tracking-tight">AI campaign builder</h2>
               <p className="mt-1 text-sm text-muted">AI proposes the campaigns. The forecasts come from your data.</p>
             </div>
             <button className="btn btn-primary" onClick={generate} disabled={thinking || !insights}>
@@ -151,7 +168,7 @@ export default function MerchantPage() {
 
           {thinking && (
             <div className="mt-5 space-y-3">
-              {[0, 1, 2].map((i) => <div key={i} className="skeleton h-36" />)}
+              {[0, 1, 2].map((i) => <div key={i} className="skeleton h-36 !rounded-[20px]" />)}
             </div>
           )}
 
@@ -163,7 +180,7 @@ export default function MerchantPage() {
                   : "Offline mode: rule-based proposals (no AI model key on this deployment). Forecasts are still computed from your data."}
               </p>
               {proposals.map((p, i) => (
-                <article key={i} className="rounded-xl border border-line bg-panel-2 p-4">
+                <article key={i} className="tile stagger p-5" style={{ "--i": i } as React.CSSProperties}>
                   <div className="flex flex-wrap items-start justify-between gap-3">
                     <div>
                       <p className="meta">
@@ -175,9 +192,14 @@ export default function MerchantPage() {
                       <p className="text-sm text-muted">{p.body}</p>
                     </div>
                     {launched[i] ? (
-                      <Link href="/control" className="btn btn-quiet btn-sm">Live. View in Mission Control</Link>
+                      <Link href="/control" className="bubble-in link link-more text-sm">
+                        <span className="mr-1.5 inline-block h-2 w-2 rounded-full bg-good align-middle" aria-hidden />
+                        Live. View in Mission Control
+                      </Link>
                     ) : (
-                      <button className="btn btn-gold" onClick={() => launch(i, p)}>Launch</button>
+                      <button type="button" className="btn btn-primary btn-sm" onClick={() => launch(i, p)} disabled={launching !== null} aria-busy={launching === i}>
+                        {launching === i ? "Launching…" : "Launch"}
+                      </button>
                     )}
                   </div>
                   <p className="mt-3 text-sm"><span className="text-muted">Why:</span> {p.rationale}</p>
@@ -188,8 +210,8 @@ export default function MerchantPage() {
                     <Metric k="ROAS" v={`${p.forecast.expectedRoas}×`} />
                   </div>
                   <details className="mt-3 text-sm">
-                    <summary className="cursor-pointer text-muted">What AI shopping agents will read</summary>
-                    <p className="mt-2 rounded-lg bg-bg p-3 font-mono text-xs">[SPONSORED] {p.agentBlurb}</p>
+                    <summary className="text-muted">What AI shopping agents will read</summary>
+                    <p className="mt-2 rounded-xl bg-panel p-3 font-mono text-xs">[SPONSORED] {p.agentBlurb}</p>
                   </details>
                 </article>
               ))}
@@ -197,7 +219,7 @@ export default function MerchantPage() {
           )}
 
           {!thinking && !proposals && (
-            <div className="mt-6 rounded-xl border border-dashed border-line p-8 text-center text-sm text-muted">
+            <div className="tile mt-6 p-8 text-center text-sm text-muted">
               One click: the AI reviews your audiences, products and cross-merchant affinity, then drafts campaigns you only pay for when they sell.
             </div>
           )}
@@ -205,8 +227,8 @@ export default function MerchantPage() {
       </section>
 
       {mine.length > 0 && (
-        <section className="card mt-6 p-5">
-          <h2 className="font-semibold">Your campaigns</h2>
+        <section className="card mt-6 p-6">
+          <h2 className="text-xl font-semibold tracking-tight">Your campaigns</h2>
           <div className="mt-3 overflow-x-auto">
             <table className="w-full text-sm">
               <thead className="text-left text-muted">
@@ -223,7 +245,7 @@ export default function MerchantPage() {
                 {mine.map((c) => (
                   <tr key={c.campaignId} className="border-t border-line">
                     <td className="py-2 pr-4">{c.name}</td>
-                    <td className="py-2 pr-4"><span className={c.status === "active" ? "text-good" : "text-muted"}>{c.status}</span></td>
+                    <td className="py-2 pr-4"><span className={c.status === "active" ? "text-good" : "text-muted"}>{c.status === "active" ? "Active" : "Paused"}</span></td>
                     <td className="stat-num py-2 pr-4">{c.sales}</td>
                     <td className="stat-num py-2 pr-4">{fmtUsd(c.revenue)}</td>
                     <td className="stat-num py-2 pr-4">{fmtUsd(c.fees)}</td>
@@ -241,7 +263,7 @@ export default function MerchantPage() {
 
 function Metric({ k, v }: { k: string; v: string }) {
   return (
-    <div className="rounded-lg bg-bg px-3 py-2">
+    <div className="rounded-xl bg-panel px-3 py-2">
       <div className="text-xs text-muted">{k}</div>
       <div className="stat-num font-semibold">{v}</div>
     </div>

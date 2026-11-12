@@ -49,7 +49,8 @@ const nextConfig: NextConfig = {
   poweredByHeader: false,
   // Dev only: without these, opening the dev server at 127.0.0.1 or a LAN IP (e.g. on a phone)
   // blocks its scripts, so pages render but never become interactive.
-  allowedDevOrigins: ["127.0.0.1", "192.168.*.*", "10.*.*.*"],
+  // 172.* covers the remaining private range (hotspots, Docker, some campus networks); *.local covers Bonjour names.
+  allowedDevOrigins: ["127.0.0.1", "192.168.*.*", "10.*.*.*", "172.*.*.*", "*.local"],
   cacheComponents: true,
   partialPrefetching: true,
   turbopack: {
