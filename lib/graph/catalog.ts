@@ -74,13 +74,26 @@ export const SEED_MERCHANTS: SeedMerchant[] = [
       { id: "p_th_stove", title: "Ultralight Backpacking Stove", description: "Boils 1L in 3.5 min, 85g.", category: "outdoor", price: 5900, image: "🔥", tags: ["stove", "camping", "hiking", "backpacking", "outdoor"] },
     ],
   },
+  {
+  id: "m_sunnyside",
+  name: "SunnySide Essentials",
+  category: "lifestyle",
+  emoji: "🌿",
+  cycleDays: 30,
+  products: [
+    { id: "p_ss_bottle", title: "Reusable Steel Bottle", description: "Insulated stainless steel bottle for everyday use.", category: "lifestyle", price: 2499, image: "🧴", tags: ["bottle", "reusable", "eco-friendly", "travel"] },
+    { id: "p_ss_tote", title: "Organic Cotton Tote Bag", description: "Durable reusable tote made from organic cotton.", category: "lifestyle", price: 999, image: "👜", tags: ["tote", "cotton", "reusable", "shopping"] },
+    { id: "p_ss_lunch", title: "Bamboo Lunch Box", description: "Lightweight sustainable lunch box for everyday meals.", category: "lifestyle", price: 1799, image: "🍱", tags: ["lunch", "bamboo", "eco-friendly", "reusable"] },
+  ],
+},
 ];
 
 /** Which merchant categories co-occur in buyer baskets (drives the synthetic graph). */
 export const AFFINITY: Record<string, Record<string, number>> = {
-  m_beanthere: { m_brewlab: 0.38, m_crumb: 0.22, m_trailhead: 0.12, m_leaf: 0.05 },
+  m_beanthere: { m_brewlab: 0.38, m_crumb: 0.22, m_trailhead: 0.12, m_leaf: 0.05, m_sunnyside: 0.10 },
   m_leaf: { m_crumb: 0.25, m_brewlab: 0.08 },
   m_trailhead: { m_beanthere: 0.2, m_brewlab: 0.1 },
+  m_sunnyside: { m_beanthere: 0.15, m_crumb: 0.10 },
 };
 
 /** Campaigns that are live as soon as the demo is seeded, so every surface has offers on a judge's first visit. */
@@ -90,6 +103,17 @@ export const SEED_LIVE_CAMPAIGNS = [
   { id: "c_live_crumb", merchantId: "m_crumb", name: "Something tasty with your coffee", objective: "cross_sell", audience: ["lookalike", "high_ltv"], products: ["p_cc_biscotti", "p_cc_croissant", "p_cc_banana"], discount: 5, fee: 0.1, headline: "Fresh-baked, made for dunking" },
   { id: "c_live_leaf", merchantId: "m_leaf", name: "Tea for the curious", objective: "acquire", audience: ["lookalike", "high_ltv"], products: ["p_ll_matcha", "p_ll_earl", "p_ll_chai"], discount: 10, fee: 0.12, headline: "Discover loose-leaf tea" },
   { id: "c_live_trailhead", merchantId: "m_trailhead", name: "Coffee on the trail", objective: "cross_sell", audience: ["lookalike", "high_ltv"], products: ["p_th_flask", "p_th_press", "p_th_stove"], discount: 0, fee: 0.1, headline: "Hot coffee, anywhere" },
+  {
+  id: "c_live_sunnyside",
+  merchantId: "m_sunnyside",
+  name: "Everyday sustainable essentials",
+  objective: "winback",
+  audience: ["lapsed", "high_ltv"],
+  products: ["p_ss_bottle", "p_ss_tote", "p_ss_lunch"],
+  discount: 10,
+  fee: 0.10,
+  headline: "Make everyday choices greener – 10% off",
+},
 ] as const;
 
 export const SEED_PUBLISHERS = [
