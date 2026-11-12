@@ -5,15 +5,18 @@ const isDev = process.env.NODE_ENV === "development";
 /**
  * Content Security Policy. Next.js inlines its bootstrap scripts, so script-src needs
  * 'unsafe-inline' without per-request nonces (which would make every page dynamic).
- * Everything else is locked to this origin: no third-party scripts, no framing, no plugins.
+ * Everything else is locked to this origin: no other third-party scripts, no framing, no plugins.
+ * PayPal's domains are allowed for the PayPal JS SDK (Smart Buttons and Pay Later messaging).
  */
+const PAYPAL = "https://*.paypal.com https://*.paypalobjects.com";
 const csp = [
   "default-src 'self'",
-  `script-src 'self' 'unsafe-inline'${isDev ? " 'unsafe-eval'" : ""}`,
+  `script-src 'self' 'unsafe-inline'${isDev ? " 'unsafe-eval'" : ""} ${PAYPAL}`,
   "style-src 'self' 'unsafe-inline'",
-  "img-src 'self' data: blob:",
+  `img-src 'self' data: blob: ${PAYPAL}`,
   "font-src 'self' data:",
-  "connect-src 'self'",
+  `connect-src 'self' ${PAYPAL} https://*.braintreegateway.com`,
+  `frame-src ${PAYPAL}`,
   "object-src 'none'",
   "base-uri 'self'",
   "form-action 'self'",
