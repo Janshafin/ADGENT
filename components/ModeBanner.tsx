@@ -12,9 +12,9 @@ export function ModeBanner() {
     !s.ai ? "the shopping agent runs in offline mode, without an AI model" : null,
   ].filter(Boolean);
   return (
-    <div className="bg-panel px-4 py-3 text-center text-sm text-text/80" role="note">
+    <div className="rise bg-panel px-4 py-3 text-center text-sm text-text/80" role="note">
       Demo mode: {parts.join(", and ")}.{" "}
-      <Link href="/judges#real-vs-simulated" className="link whitespace-nowrap">See what&apos;s real &gt;</Link>
+      <Link href="/judges#real-vs-simulated" className="link link-more whitespace-nowrap">See what&apos;s real</Link>
     </div>
   );
 }

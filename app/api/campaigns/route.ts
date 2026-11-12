@@ -59,9 +59,11 @@ export async function POST(req: Request) {
     const owned = await d.select({ id: schema.products.id }).from(schema.products).where(eq(schema.products.merchantId, merchantId));
     if (!proposal.productIds.every((pid) => owned.some((p) => p.id === pid))) throw new HttpError(400, "Campaign products must belong to this merchant");
     const active = await d
-      .select({ id: schema.campaigns.id })
+      .select({ id: schema.campaigns.id, name: schema.campaigns.name })
       .from(schema.campaigns)
       .where(and(eq(schema.campaigns.merchantId, merchantId), eq(schema.campaigns.status, "active")));
+    // The same campaign launched twice (a double click, a retry) would split its own traffic and budget.
+    if (active.some((c) => c.name === proposal.name)) throw new HttpError(409, `"${proposal.name}" is already live for ${merchant.name}.`);
     if (active.length >= MAX_ACTIVE_PER_MERCHANT) {
       throw new HttpError(409, `${merchant.name} already has ${MAX_ACTIVE_PER_MERCHANT} live campaigns. Pause one in Mission Control first.`);
     }

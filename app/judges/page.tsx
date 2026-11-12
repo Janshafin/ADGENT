@@ -1,5 +1,8 @@
 import Link from "next/link";
 import type { Metadata } from "next";
+import { Reveal } from "@/components/Reveal";
+import { Tilt } from "@/components/Tilt";
+import { SITE_URL } from "@/lib/site";
 
 export const metadata: Metadata = {
   title: "Judges' tour",
@@ -58,7 +61,7 @@ const MCP = `{
     "adgent": {
       "command": "npx",
       "args": ["tsx", "/path/to/adgent/mcp-server/index.ts"],
-      "env": { "ADGENT_URL": "<this site's URL>" }
+      "env": { "ADGENT_URL": "${SITE_URL}" }
     }
   }
 }`;
@@ -66,28 +69,31 @@ const MCP = `{
 export default function JudgesPage() {
   return (
     <div className="mx-auto max-w-[1024px] px-4 py-14 sm:px-6">
-      <h1 className="display text-4xl sm:text-6xl">See it work in about a minute.</h1>
-      <p className="mt-4 max-w-2xl text-xl text-muted">
+      <h1 className="display rise text-4xl sm:text-6xl">See it work in about a minute.</h1>
+      <p className="rise-2 mt-4 max-w-2xl text-xl text-muted">
         No login. Four steps, each one a real part of the product. Merchants pay a fee only when a sale settles on PayPal, and PayPal earns on the
         ad, the checkout, Pay Later and Payouts.
       </p>
 
       <ol className="mt-8 grid gap-4 md:grid-cols-2">
         {STEPS.map((s, i) => (
-          <li key={s.title} className="card flex flex-col p-5">
-            <div className="flex items-center gap-3">
-              <span className="grid h-7 w-7 place-items-center rounded-full bg-pp/15 text-sm font-bold text-pp-sky" aria-hidden>{i + 1}</span>
-              <h2 className="font-semibold">{s.title}</h2>
+          <Reveal as="li" key={s.title} delay={(i % 2) * 90}>
+            <Tilt max={5} className="card flex h-full flex-col p-6">
+            <div className="z-lift-1 flex items-center gap-3">
+              <span className="stat-num grid h-7 w-7 place-items-center rounded-full bg-text text-sm font-semibold text-bg" aria-hidden>{i + 1}</span>
+              <h2 className="text-lg font-semibold tracking-tight">{s.title}</h2>
             </div>
             <p className="mt-3 text-sm leading-relaxed text-muted">{s.body}</p>
             <p className="mt-2 text-sm"><span className="text-muted">Look for:</span> {s.look}</p>
             <div className="mt-4 flex-1" />
-            <Link href={s.href} className="btn btn-primary self-start">{s.cta}</Link>
-          </li>
+            <Link href={s.href} className="btn btn-primary btn-sm z-lift-2 self-start">{s.cta}</Link>
+            </Tilt>
+          </Reveal>
         ))}
       </ol>
 
-      <section id="real-vs-simulated" className="mt-12 scroll-mt-20">
+      <Reveal as="section" className="mt-16 scroll-mt-20">
+        <span id="real-vs-simulated" className="block scroll-mt-24" />
         <h2 className="display text-3xl">What&apos;s real, and what&apos;s simulated.</h2>
         <div className="mt-6 overflow-x-auto rounded-[18px] bg-panel">
           <table className="w-full min-w-[640px] text-left text-sm">
@@ -109,9 +115,9 @@ export default function JudgesPage() {
             </tbody>
           </table>
         </div>
-      </section>
+      </Reveal>
 
-      <section id="money" className="mt-12 scroll-mt-20">
+      <section id="money" className="mt-16 scroll-mt-20">
         <h2 className="display text-3xl">How one $18.04 sale settles.</h2>
         <ol className="mt-4 grid gap-2 text-sm sm:grid-cols-5">
           {[
@@ -121,25 +127,25 @@ export default function JudgesPage() {
             ["Refund hold", "Money waits out the hold (2 min in the demo) so refunds never chase payouts"],
             ["Payouts", "One batch: merchant $16.78, publisher $0.63; ADGENT keeps $0.63"],
           ].map(([t, d], i) => (
-            <li key={t} className="card p-4">
+            <Reveal as="li" key={t} delay={i * 80} className="card p-4">
               <div className="text-xs text-muted">Step {i + 1}</div>
               <div className="font-medium">{t}</div>
               <p className="mt-1 text-xs text-muted">{d}</p>
-            </li>
+            </Reveal>
           ))}
         </ol>
       </section>
 
-      <section id="trust" className="mt-12 grid scroll-mt-20 gap-4 md:grid-cols-2">
-        {TRUST.map(([t, d]) => (
-          <div key={t} className="card p-5">
-            <h3 className="font-semibold">{t}</h3>
+      <section id="trust" className="mt-16 grid scroll-mt-20 gap-4 md:grid-cols-2">
+        {TRUST.map(([t, d], i) => (
+          <Reveal key={t} delay={(i % 2) * 90} className="card p-6">
+            <h3 className="text-lg font-semibold tracking-tight">{t}</h3>
             <p className="mt-2 text-sm leading-relaxed text-muted">{d}</p>
-          </div>
+          </Reveal>
         ))}
       </section>
 
-      <section id="claude-desktop" className="mt-12 grid scroll-mt-20 gap-6 md:grid-cols-2">
+      <section id="claude-desktop" className="mt-16 grid scroll-mt-20 gap-6 md:grid-cols-2">
         <div>
           <h2 className="display text-3xl">Connect any MCP agent.</h2>
           <p className="mt-2 text-sm text-muted">

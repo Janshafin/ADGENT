@@ -5,6 +5,9 @@ import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { api, fmtCents } from "@/lib/client/api";
 import { PayPalCheckout } from "@/components/PayPalCheckout";
+import { ProductArt } from "@/components/ProductArt";
+import { StatusMark } from "@/components/StatusMark";
+import { Tilt } from "@/components/Tilt";
 
 type OfferView = {
   offerId: string;
@@ -28,7 +31,9 @@ export default function ShopOfferPage({ params }: PageProps<"/shop/[offerId]">) 
 function ShopOffer({ params }: { params: Promise<{ offerId: string }> }) {
   const { offerId } = use(params);
   const search = useSearchParams();
-  const surface = (search.get("surface") as "agent" | "widget" | "winback") ?? "widget";
+  // A hand-edited link must still check out: anything unrecognised counts as the publisher widget.
+  const asked = search.get("surface");
+  const surface = asked === "agent" || asked === "winback" ? asked : "widget";
   const [offer, setOffer] = useState<OfferView | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [paid, setPaid] = useState<{ captureId?: string; orderId: string } | null>(null);
@@ -37,15 +42,28 @@ function ShopOffer({ params }: { params: Promise<{ offerId: string }> }) {
     api<OfferView>(`/api/offer/${encodeURIComponent(offerId)}`).then(setOffer).catch((e) => setError((e as Error).message));
   }, [offerId]);
 
-  if (error) return <Centered><p className="text-bad">{error}</p></Centered>;
+  if (error) {
+    return (
+      <Centered>
+        <div className="text-center">
+          <StatusMark kind="error" />
+          <h1 className="display mt-6 text-3xl">This offer isn&apos;t available.</h1>
+          <p className="mt-2 text-muted">{error}</p>
+          <Link href="/agent" className="btn btn-quiet mt-6">Shop with AI instead</Link>
+        </div>
+      </Centered>
+    );
+  }
   if (!offer) return <Centered><div className="skeleton h-80 w-full max-w-3xl" /></Centered>;
 
   return (
     <Centered>
-      <div className="card grid w-full max-w-4xl gap-8 p-6 sm:p-8 md:grid-cols-[1fr_340px]">
+      <div className="card rise grid w-full max-w-4xl gap-8 p-6 sm:p-8 md:grid-cols-[1fr_340px]">
         <div>
           <span className="chip chip-sponsored">Sponsored</span> <span className="meta">{offer.merchant.name} pays an ad fee only if you buy</span>
-          <div className="mt-6 grid h-48 place-items-center rounded-2xl bg-panel-2 text-8xl" aria-hidden>{offer.product.image}</div>
+          <Tilt max={10} className="mt-6 rounded-[20px]">
+            <ProductArt symbol={offer.product.image} className="h-48 rounded-[20px] [transform-style:preserve-3d] [&>svg]:[transform:translateZ(50px)]" />
+          </Tilt>
           <p className="mt-6 text-sm text-muted">{offer.merchant.name}</p>
           <h1 className="mt-1 text-2xl font-semibold tracking-tight">{offer.product.title}</h1>
           <p className="mt-2 text-muted">{offer.product.description}</p>
@@ -63,15 +81,16 @@ function ShopOffer({ params }: { params: Promise<{ offerId: string }> }) {
 
         <div className="flex flex-col justify-center">
           {paid ? (
-            <div className="rounded-2xl border border-good/40 bg-good/10 p-6 text-center">
-              <Check />
-              <h2 className="mt-2 text-lg font-semibold">Paid with PayPal</h2>
-              <p className="mt-1 text-sm text-muted">Capture {paid.captureId}</p>
-              <Link href="/control" className="btn btn-quiet mt-5">See it in Mission Control</Link>
+            <div className="tile bubble-in p-6 text-center">
+              <StatusMark kind="done" />
+              <h2 className="mt-3 text-lg font-semibold">Paid with PayPal</h2>
+              <p className="meta mt-1 font-mono">Capture {paid.captureId}</p>
+              <Link href="/control" className="link link-more mt-4 inline-block text-sm">See it in Mission Control</Link>
             </div>
           ) : !offer.active ? (
-            <p className="text-sm text-muted">This offer has ended.</p>
+            <p className="tile p-6 text-center text-sm text-muted">This offer has ended.</p>
           ) : (
+            <div className="tile p-5">
             <PayPalCheckout
               offerId={offer.offerId}
               amountCents={offer.finalPriceCents}
@@ -80,20 +99,12 @@ function ShopOffer({ params }: { params: Promise<{ offerId: string }> }) {
               buyerRef={search.get("b")}
               onPaid={setPaid}
             />
+            </div>
           )}
           <p className="mt-4 text-center text-xs text-muted">Eligible purchases are covered by PayPal Purchase Protection.</p>
         </div>
       </div>
     </Centered>
-  );
-}
-
-function Check() {
-  return (
-    <svg width="44" height="44" viewBox="0 0 44 44" className="mx-auto" aria-hidden>
-      <circle cx="22" cy="22" r="22" fill="var(--good)" />
-      <path d="M13 22.5l6 6 12-13" fill="none" stroke="#fff" strokeWidth="3.2" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
   );
 }
 

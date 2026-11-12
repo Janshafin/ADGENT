@@ -43,7 +43,7 @@ export async function POST(req: Request) {
       }
       case "PAYMENT.CAPTURE.REFUNDED":
       case "PAYMENT.CAPTURE.REVERSED": {
-        const captureId = capturedIdFromRefund(evt.resource);
+        const captureId = capturedIdFromRefund(evt.resource) ?? (evt.event_type === "PAYMENT.CAPTURE.REVERSED" ? evt.resource.id ?? null : null);
         if (captureId) await applyRefund(captureId, evt.resource.id ?? null, `Webhook ${evt.event_type}`);
         break;
       }

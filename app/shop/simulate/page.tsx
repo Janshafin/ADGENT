@@ -38,8 +38,8 @@ function SimulatedApproval() {
 
   return (
     <div className="mx-auto max-w-md px-4 py-16">
-      <div className="card p-6">
-        <p className="text-xs font-semibold uppercase tracking-wide text-warn">Simulated PayPal</p>
+      <div className="card rise p-6">
+        <p className="chip chip-sponsored">Simulated PayPal</p>
         <h1 className="mt-2 text-xl font-semibold">Approve this payment</h1>
         <p className="mt-2 text-sm text-muted">
           On a deployment with PayPal sandbox keys, this step happens on paypal.com. Here it is simulated, so no money moves, but the order,

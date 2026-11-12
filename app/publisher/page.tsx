@@ -4,6 +4,8 @@ import { useEffect, useState, useSyncExternalStore } from "react";
 import Link from "next/link";
 import { api, fmtUsd } from "@/lib/client/api";
 import type { PublisherSummary } from "@/app/api/publishers/route";
+import { CountUp } from "@/components/CountUp";
+import { Tilt } from "@/components/Tilt";
 
 const noop = () => () => {};
 
@@ -47,7 +49,7 @@ export default function PublisherPage() {
         </div>
         <label className="text-sm">
           <span className="meta mb-1 block">Publisher</span>
-          <select value={selected} onChange={(e) => setSelected(e.target.value)} className="select">
+          <select value={selected} onChange={(e) => setSelected(e.target.value)} className="select" disabled={!pubs}>
             {(pubs ?? []).map((p) => (
               <option key={p.id} value={p.id}>{p.name}</option>
             ))}
@@ -55,46 +57,48 @@ export default function PublisherPage() {
         </label>
       </div>
 
-      {error && <p role="alert" className="mt-4 rounded-xl border border-bad/40 bg-bad/10 px-4 py-3 text-sm text-bad">{error}</p>}
+      {error && <p role="alert" className="bubble-in mt-4 rounded-2xl bg-bad/10 px-4 py-3 text-sm text-bad">{error}</p>}
 
       <section className="mt-6 grid grid-cols-2 gap-3 md:grid-cols-5" aria-label="Earnings">
-        {[
-          ["Ad impressions", pub ? pub.impressions.toLocaleString() : null],
-          ["Sales from your slots", pub ? String(pub.sales) : null],
-          ["Revenue you drove", pub ? fmtUsd(pub.revenueDriven) : null],
-          ["You earned", pub ? fmtUsd(pub.earned) : null],
-          ["Waiting for payout", pub ? fmtUsd(pub.pending) : null],
-        ].map(([k, v]) => (
-          <div key={k} className="card p-4">
-            <div className="meta">{k}</div>
-            {v === null ? <div className="skeleton mt-2 h-7 w-20" /> : <div className="stat-num mt-1 text-2xl font-semibold">{v}</div>}
-          </div>
+        {(
+          [
+            ["Ad impressions", pub?.impressions, undefined],
+            ["Sales from your slots", pub?.sales, undefined],
+            ["Revenue you drove", pub?.revenueDriven, fmtUsd],
+            ["You earned", pub?.earned, fmtUsd],
+            ["Waiting for payout", pub?.pending, fmtUsd],
+          ] as const
+        ).map(([k, v, format], i) => (
+          <Tilt key={k} max={8} className="card stagger p-5" style={{ "--i": i } as React.CSSProperties}>
+            <div className="text-sm text-muted">{k}</div>
+            {v === undefined ? <div className="skeleton mt-2 h-8 w-20" /> : <div className="stat-num display z-lift-2 mt-2 text-3xl"><CountUp value={v} format={format} /></div>}
+          </Tilt>
         ))}
       </section>
       {pub && <p className="meta mt-2">Revenue share: {Math.round(pub.revShare * 100)}% of the ad fee. Paid so far: {fmtUsd(pub.paid)}.</p>}
 
       <section className="mt-6 grid gap-6 lg:grid-cols-2">
-        <div className="card p-5">
-          <h2 className="font-semibold">Add ads to your site</h2>
+        <div className="card p-6">
+          <h2 className="text-xl font-semibold tracking-tight">Add ads to your site</h2>
           <label className="mt-4 block text-sm">
             <span className="meta mb-1 block">What should the slot show?</span>
             <input value={query} onChange={(e) => setQuery(e.target.value)} maxLength={120} className="field bg-bg" />
           </label>
-          <pre className="mt-4 overflow-x-auto rounded-lg border border-line bg-bg p-3 text-xs leading-relaxed"><code>{snippet}</code></pre>
+          <pre className="mt-4 overflow-x-auto rounded-xl bg-bg p-4 font-mono text-xs leading-relaxed"><code>{snippet}</code></pre>
           <div className="mt-3 flex flex-wrap gap-2">
-            <button type="button" className="btn btn-primary" onClick={copy}>{copied ? "Copied" : "Copy code"}</button>
+            <button type="button" className="btn btn-primary" onClick={copy} aria-live="polite">{copied ? "Copied" : "Copy code"}</button>
             <Link href="/demo/blog" className="btn btn-ghost">See it on the demo blog</Link>
           </div>
         </div>
 
-        <div className="card p-5">
-          <h2 className="font-semibold">PayPal Payouts</h2>
+        <div className="card p-6">
+          <h2 className="text-xl font-semibold tracking-tight">PayPal Payouts</h2>
           {!pub ? (
             <div className="skeleton mt-4 h-24" />
           ) : pub.payouts.length === 0 ? (
             <p className="mt-3 text-sm text-muted">
               No payouts yet. When a reader buys from your slot, your share is paid automatically after the refund hold.{" "}
-              <Link href="/demo/blog" className="text-pp-sky hover:underline">Make a test purchase</Link>.
+              <Link href="/demo/blog" className="link">Make a test purchase</Link>.
             </p>
           ) : (
             <table className="mt-3 w-full text-sm">

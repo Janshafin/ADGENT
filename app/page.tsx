@@ -1,4 +1,7 @@
 import Link from "next/link";
+import { CountUp } from "@/components/CountUp";
+import { Reveal } from "@/components/Reveal";
+import { Tilt } from "@/components/Tilt";
 import { SITE_DESCRIPTION, SITE_NAME, SITE_URL } from "@/lib/site";
 
 /** Structured data so search engines can describe the product. */
@@ -45,15 +48,24 @@ export default function Home() {
           <Link href="/agent" className="link link-more">Try the shopping agent</Link>
           <Link href="/judges#money" className="link link-more">How a sale settles</Link>
         </p>
-        <div className="rise rise-4 mx-auto mt-14 max-w-[880px] pb-[90px]">
-          <SaleSplit />
+        <div className="unfold mx-auto mt-14 max-w-[880px] pb-[90px]">
+          <Tilt max={7} className="rounded-[28px]">
+            <div className="drift">
+              {/* Two sheets behind the card give it a stack to lift off from. */}
+              <div className="z-sink-2 absolute inset-x-10 -bottom-7 top-10 rounded-[28px] bg-panel/70" aria-hidden />
+              <div className="z-sink-1 absolute inset-x-5 -bottom-3.5 top-5 rounded-[28px] bg-panel" aria-hidden />
+              <SaleSplit />
+            </div>
+          </Tilt>
         </div>
       </section>
 
       {/* Highlights stage: a grey band holding flat white cards. */}
       <section className="band bg-panel px-4 py-[90px] sm:px-6">
         <div className="mx-auto max-w-[1024px]">
-          <h2 className="display text-[32px] sm:text-[40px] sm:leading-none">Get the highlights.</h2>
+          <Reveal>
+            <h2 className="display text-[32px] sm:text-[40px] sm:leading-none">Get the highlights.</h2>
+          </Reveal>
           <div className="mt-10 grid gap-5 lg:grid-cols-2">
             <FeatureCard
               kicker="Shop with AI"
@@ -68,15 +80,16 @@ export default function Home() {
               title="Every dollar. Live."
               copy="Watch each sale move from click to PayPal capture to payout, as it happens."
               links={[{ href: "/control", label: "Open Mission Control" }]}
+              delay={120}
             >
               <ControlShot />
             </FeatureCard>
           </div>
           <div className="mt-5 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
-            <StatCard value="0" unit="$" label="upfront. A fee exists only on a captured sale." href="/merchant" cta="For merchants" />
-            <StatCard value="50" unit="%" unitAfter label="of the ad fee goes to the site that made the sale." href="/publisher" cta="For publishers" />
-            <StatCard value="10" unit="%" unitAfter label="of shoppers never see each ad, so lift is measured, not guessed." href="/control" cta="See the lift" />
-            <StatCard value="100" unit="%" unitAfter label="of payments are approved by the shopper on PayPal itself." href="/judges#trust" cta="How it stays safe" />
+            <StatCard value={0} unit="$" label="upfront. A fee exists only on a captured sale." href="/merchant" cta="For merchants" />
+            <StatCard value={50} unit="%" unitAfter label="of the ad fee goes to the site that made the sale." href="/publisher" cta="For publishers" delay={80} />
+            <StatCard value={10} unit="%" unitAfter label="of shoppers never see each ad, so lift is measured, not guessed." href="/control" cta="See the lift" delay={160} />
+            <StatCard value={100} unit="%" unitAfter label="of payments are approved by the shopper on PayPal itself." href="/judges#trust" cta="How it stays safe" delay={240} />
           </div>
         </div>
       </section>
@@ -84,17 +97,19 @@ export default function Home() {
       {/* Editorial block: small kicker, large left-aligned statement, body copy. */}
       <section className="px-4 py-[90px] sm:px-6">
         <div className="mx-auto max-w-[1024px]">
-          <p className="kicker text-muted">How it works</p>
-          <h2 className="display mt-3 max-w-3xl text-[36px] sm:text-[56px] sm:leading-[1.07] sm:tracking-[-0.28px]">
-            The merchant pays when the sale is real. Not before.
-          </h2>
+          <Reveal>
+            <p className="kicker text-muted">How it works</p>
+            <h2 className="display mt-3 max-w-3xl text-[36px] sm:text-[56px] sm:leading-[1.07] sm:tracking-[-0.28px]">
+              The merchant pays when the sale is real. Not before.
+            </h2>
+          </Reveal>
           <ol className="mt-14 grid gap-x-10 gap-y-10 border-t border-line pt-10 md:grid-cols-3">
             {STEPS.map((s, i) => (
-              <li key={s.title}>
+              <Reveal as="li" key={s.title} delay={i * 110}>
                 <p className="stat-num text-[14px] font-semibold text-muted">{String(i + 1).padStart(2, "0")}</p>
                 <h3 className="mt-2 text-[21px] font-semibold leading-[1.19]">{s.title}</h3>
                 <p className="mt-2 text-muted">{s.copy}</p>
-              </li>
+              </Reveal>
             ))}
           </ol>
           <p className="mt-12 flex flex-wrap gap-x-8 gap-y-2">
@@ -115,9 +130,9 @@ const STEPS = [
 
 type Action = { href: string; label: string };
 
-function FeatureCard(props: { kicker: string; title: string; copy: string; links: Action[]; children: React.ReactNode }) {
+function FeatureCard(props: { kicker: string; title: string; copy: string; links: Action[]; delay?: number; children: React.ReactNode }) {
   return (
-    <article className="card flex flex-col overflow-hidden px-7 pt-10 text-center sm:px-10">
+    <Reveal as="article" delay={props.delay} className="card flex flex-col overflow-hidden px-7 pt-10 text-center sm:px-10">
       <p className="kicker text-muted">{props.kicker}</p>
       <h3 className="display mt-2 text-[28px] sm:text-[36px] sm:leading-[1.1]">{props.title}</h3>
       <p className="mx-auto mt-3 max-w-sm">{props.copy}</p>
@@ -127,42 +142,44 @@ function FeatureCard(props: { kicker: string; title: string; copy: string; links
         ))}
       </p>
       <div className="mt-10 flex flex-1 items-end justify-center">{props.children}</div>
-    </article>
+    </Reveal>
   );
 }
 
-function StatCard(props: { value: string; unit: string; unitAfter?: boolean; label: string; href: string; cta: string }) {
+function StatCard(props: { value: number; unit: string; unitAfter?: boolean; label: string; href: string; cta: string; delay?: number }) {
   return (
-    <article className="card flex flex-col p-7">
-      <p className="display stat-num text-[56px] leading-none">
+    <Reveal as="article" delay={props.delay}>
+      <Tilt max={9} className="card flex h-full flex-col p-7">
+      <p className="display stat-num z-lift-2 text-[56px] leading-none">
         {!props.unitAfter && <span className="text-[32px] align-[0.35em]">{props.unit}</span>}
-        {props.value}
+        <CountUp value={props.value} duration={1400} />
         {props.unitAfter && <span className="text-[32px]">{props.unit}</span>}
       </p>
       <p className="small mt-3 flex-1 text-muted">{props.label}</p>
       <Link href={props.href} className="link link-more small mt-5">{props.cta}</Link>
-    </article>
+      </Tilt>
+    </Reveal>
   );
 }
 
 /** Product shot 1: one sale, split three ways. */
 function SaleSplit() {
   return (
-    <figure className="rounded-[28px] bg-bg p-7 text-left shadow-[inset_0_0_0_1px_var(--control)] sm:p-10">
+    <figure className="relative rounded-[28px] bg-bg p-7 text-left shadow-[inset_0_0_0_1px_var(--control),0_30px_60px_-40px_rgb(0_0_0/0.35)] [transform-style:preserve-3d] sm:p-10">
       <div className="flex flex-wrap items-baseline justify-between gap-4">
         <div>
           <p className="meta">Sold through an AI assistant</p>
           <p className="mt-1 text-xl font-semibold">{SALE.product}</p>
         </div>
-        <p className="display stat-num text-5xl sm:text-6xl">{fmt(SALE.total)}</p>
+        <p className="display stat-num z-lift-3 text-5xl sm:text-6xl">{fmt(SALE.total)}</p>
       </div>
       {/* The two ad-fee slices are drawn wider than scale (3.5% each) so they stay visible. */}
-      <div className="mt-10 grid h-3 gap-1" style={{ gridTemplateColumns: "1fr 2.75rem 2.75rem" }} aria-hidden>
-        <span className="block rounded-full bg-pp" />
-        <span className="block rounded-full bg-[var(--pp-navy)]" />
-        <span className="block rounded-full bg-[var(--paypal-yellow)]" />
+      <div className="z-lift-2 mt-10 grid h-3 gap-1" style={{ gridTemplateColumns: "1fr 2.75rem 2.75rem" }} aria-hidden>
+        <span className="grow-x-now block rounded-full bg-pp [animation-duration:1.5s]" />
+        <span className="grow-x-now block rounded-full bg-[var(--pp-navy)] [animation-duration:1.9s]" />
+        <span className="grow-x-now block rounded-full bg-[var(--paypal-yellow)] [animation-duration:2.2s]" />
       </div>
-      <dl className="mt-6 grid grid-cols-3 gap-4">
+      <dl className="z-lift-1 mt-6 grid grid-cols-3 gap-4">
         {(
           [
             ["Merchant", SALE.merchant, "bg-pp"],
@@ -189,13 +206,13 @@ function SaleSplit() {
 /** Product shot 2: the assistant conversation, drawn like a phone screen. */
 function ChatShot() {
   return (
-    <div className="mx-auto w-full max-w-[340px] rounded-t-[44px] bg-[#1d1d1f] p-3 pb-0" aria-label="Example conversation with the shopping assistant">
+    <div className="pose mx-auto w-full max-w-[340px] rounded-t-[44px] bg-[#1d1d1f] p-3 pb-0" style={{ "--px": "5deg", "--py": "-9deg" } as React.CSSProperties} aria-label="Example conversation with the shopping assistant">
       <div className="space-y-3 rounded-t-[34px] bg-bg px-4 pb-6 pt-8 text-left text-[15px]">
-        <div className="flex justify-end">
+        <div className="seq flex justify-end" style={{ "--i": 0 } as React.CSSProperties}>
           <p className="max-w-[80%] rounded-[20px] bg-pp px-4 py-2 text-white">Good espresso beans under $25?</p>
         </div>
-        <p className="max-w-[85%] rounded-[20px] bg-panel px-4 py-2">Sponsored: this one fits, and it&apos;s 10% off.</p>
-        <div className="rounded-[20px] bg-panel p-4">
+        <p className="seq max-w-[85%] rounded-[20px] bg-panel px-4 py-2" style={{ "--i": 2 } as React.CSSProperties}>Sponsored: this one fits, and it&apos;s 10% off.</p>
+        <div className="seq rounded-[20px] bg-panel p-4" style={{ "--i": 3 } as React.CSSProperties}>
           <div className="flex items-start justify-between gap-3">
             <span className="chip chip-sponsored">Sponsored</span>
             <span className="meta text-right">Bean There Coffee Roasters</span>
@@ -207,7 +224,7 @@ function ChatShot() {
           </div>
           <p className="btn btn-gold mt-3 w-full">Pay with PayPal</p>
         </div>
-        <div className="flex justify-end">
+        <div className="seq flex justify-end" style={{ "--i": 6 } as React.CSSProperties}>
           <p className="rounded-[20px] bg-pp px-4 py-2 text-white">I&apos;ll take it.</p>
         </div>
       </div>
@@ -225,7 +242,7 @@ function ControlShot() {
     ["11:55:04", "PayPal order", "AI assistant", "$17.09", "text-pp-sky"],
   ];
   return (
-    <div className="mx-auto w-full max-w-[820px]">
+    <div className="pose mx-auto w-full max-w-[820px]" style={{ "--px": "9deg", "--py": "7deg" } as React.CSSProperties}>
       <div className="rounded-t-[22px] bg-[#1d1d1f] p-2.5 pb-0">
         <div className="overflow-hidden rounded-t-[14px] bg-bg p-5 text-left sm:p-6">
           <div className="grid grid-cols-3 gap-3">
@@ -243,7 +260,7 @@ function ControlShot() {
           <table className="mt-4 w-full text-[12px] sm:text-[13px]">
             <tbody>
               {rows.map(([t, ev, where, amt, cls], i) => (
-                <tr key={i} className="border-t border-[var(--hairline)]">
+                <tr key={i} className="seq border-t border-[var(--hairline)]" style={{ "--i": rows.length - i } as React.CSSProperties}>
                   <td className="stat-num py-2 text-muted">{t}</td>
                   <td className={`py-2 font-medium ${cls}`}>{ev}</td>
                   <td className="py-2 text-muted">{where}</td>

@@ -2,6 +2,9 @@
 
 Daily two-line status. Newest first.
 
+- 2026-11-12: Fixed PayPal SDK blocked by CSP, duplicate offers, double campaign launch, offline ledger questions, reversal webhooks; added motion (reveals, count-ups, chat), nav state, Buy buttons, product icons. 70 tests, build green, browser E2E of agent and widget purchases passes.
+- 2026-11-12: Still needed from a human: host account and deploy, Turso token, PayPal sandbox keys and webhook, Anthropic key, video, Devpost submission. Real PayPal buttons are untested until keys exist.
+
 - 2026-11-11: Shipped Model B settlement (ADGENT payee → PayPal Payouts to merchant + publisher after a refund hold), webhook verify + dedupe, reconciler, acting budget guardian, admin guard + rate limits, prompt-injection defense, built-in PayPal simulator + offline agent so the demo works with no keys, /judges, /publisher, Orders grid with refunds. 54 tests, build green, browser E2E of the agent purchase passes.
 - 2026-11-11: Still needed from a human: PayPal sandbox app + keys, Anthropic key, Render/Turso accounts and deploy, YouTube video, Devpost submission (deadline Nov 12 12:00 PT). Not done: JS SDK v6 migration (needs a client id to verify), Agent Toolkit panel, Channel3.
 

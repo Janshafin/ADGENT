@@ -60,6 +60,9 @@ describe("agent checkout guard", () => {
     expect(pickOffer("buy the decaf please", offers)).toBe("b");
     expect(pickOffer("get #1", offers)).toBe("a");
     expect(pickOffer("hmm, buy something", offers)).toBeNull();
+    expect(pickOffer("I'll take that one", offers)).toBe("a");
+    // Naming a product that wasn't shown is a new request, even with one offer on screen.
+    expect(pickOffer("I want the gym shoes", [offers[0]])).toBeNull();
   });
 });
 
@@ -77,6 +80,15 @@ describe("offline shopping agent (no API key)", () => {
 
     const t2 = await shopperTurn({ history: t1.appended, userText: "I'll take the first one", shopperRef: "shopper_t", baseUrl: "http://test.local" });
     expect(t2.ui[0]).toMatchObject({ kind: "checkout", offerId: "c_test:p_test", totalCents: 1800 });
+  });
+
+  it("searches again when the shopper asks for something new after offers were shown", async () => {
+    const t1 = await shopperTurn({ history: [], userText: "some good coffee beans", shopperRef: "shopper_t", baseUrl: "http://test.local" });
+    const t2 = await shopperTurn({ history: t1.appended, userText: "I want the gym shoes", shopperRef: "shopper_t", baseUrl: "http://test.local" });
+    expect(t2.ui).toEqual([]);
+    expect(t2.reply).toMatch(/couldn't find/);
+    const t3 = await shopperTurn({ history: t1.appended, userText: "I'll take it", shopperRef: "shopper_t", baseUrl: "http://test.local" });
+    expect(t3.ui[0]).toMatchObject({ kind: "checkout" });
   });
 
   it("sanitises advertiser text before any surface sees it", async () => {

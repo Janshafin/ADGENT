@@ -40,3 +40,18 @@ describe("offline relevance", () => {
     expect((await rankOffers("matcha tea", rich, 3)).some((r) => r.title.includes("Stove"))).toBe(false);
   });
 });
+
+describe("offline ledger questions", () => {
+  it("answers Mission Control's suggested questions by keyword", async () => {
+    const { keywordQuery } = await import("@/lib/ai/ask");
+    const fees = keywordQuery("Ad fees by surface");
+    expect(fees.filters).toContainEqual({ column: "type", op: "equals", value: "fee_collected", valueTo: null });
+    expect(fees.groupBy).toEqual(["surface"]);
+    expect(keywordQuery("Show sales over $20").filters).toContainEqual({ column: "amount", op: "greaterThan", value: 20, valueTo: null });
+    expect(keywordQuery("Every refund").filters).toEqual([{ column: "type", op: "equals", value: "refunded", valueTo: null }]);
+    const best = keywordQuery("Which campaign made the most revenue from AI agents?");
+    expect(best.groupBy).toEqual(["campaignName"]);
+    expect(best.filters).toContainEqual({ column: "surface", op: "equals", value: "agent", valueTo: null });
+    expect(best.sort).toEqual({ column: "amount", dir: "desc" });
+  });
+});
