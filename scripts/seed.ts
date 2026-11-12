@@ -49,7 +49,7 @@ async function main() {
       // The hero merchant can be a real sandbox account; the others get payout addresses PayPal sandbox accepts as unclaimed.
       paypalEmail: i === 0 ? env.DEMO_MERCHANT_PAYPAL_EMAIL || `${m.id.replace(/^m_/, "")}@merchant.adgent.example` : `${m.id.replace(/^m_/, "")}@merchant.adgent.example`,
       paypalMerchantId: i === 0 ? env.DEMO_MERCHANT_PAYPAL_ID || null : null,
-      trustScore: [0.97, 0.94, 0.91, 0.89, 0.93][i],
+      trustScore: [0.97, 0.94, 0.91, 0.89, 0.93, 0.96][i],
     })),
   );
   await d.insert(schema.products).values(
@@ -80,7 +80,7 @@ async function main() {
 
   // Transactions: each buyer has a "home" merchant, then affinity-driven second merchants.
   const txs: (typeof schema.transactions.$inferInsert)[] = [];
-  const homeWeights = [0.42, 0.14, 0.16, 0.16, 0.12];
+  const homeWeights = [0.38, 0.13, 0.15, 0.14, 0.10, 0.10];
   let n = 0;
   const purchaseRun = (buyerId: string, merchantIdx: number, startAgoDays: number, churnAfterDays: number | null) => {
     const m = SEED_MERCHANTS[merchantIdx];
