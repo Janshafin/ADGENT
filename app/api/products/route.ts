@@ -6,7 +6,7 @@ import { z } from "zod";
 import { db, schema } from "@/lib/db";
 import { body, fail } from "@/lib/http";
 import { rateLimit } from "@/lib/http/rate-limit";
-
+import { requireAdmin } from "@/lib/auth/admin";
 const productSchema = z.object({
   merchantId: z.string().min(1).max(80),
   title: z.string().trim().min(2).max(100),
@@ -35,6 +35,8 @@ export async function GET(req: Request) {
 export async function POST(req: Request) {
   try {
     rateLimit(req, "product-create", 20);
+    requireAdmin(req);
+
     const data = await body(req, productSchema);
 
     const [merchant] = await db()
