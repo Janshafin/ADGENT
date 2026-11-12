@@ -44,6 +44,9 @@ const hsts = { key: "Strict-Transport-Security", value: "max-age=63072000; inclu
 
 const nextConfig: NextConfig = {
   poweredByHeader: false,
+  // Dev only: without these, opening the dev server at 127.0.0.1 or a LAN IP (e.g. on a phone)
+  // blocks its scripts, so pages render but never become interactive.
+  allowedDevOrigins: ["127.0.0.1", "192.168.*.*", "10.*.*.*"],
   cacheComponents: true,
   partialPrefetching: true,
   turbopack: {
