@@ -71,7 +71,7 @@ const ICONS: Record<string, React.ReactNode> = {
 const BY_SYMBOL: Record<string, keyof typeof ICONS> = {
   "☕": "cup", "🌙": "cup", "🧊": "cup", "🥤": "cup",
   "🌸": "leaf", "🍵": "leaf", "🌶️": "leaf",
-  "📦": "box",
+  "📦": "box", "🍱": "box", "👜": "bag",
   "⚙️": "grinder",
   "🫖": "kettle", "🔻": "kettle",
   "⚖️": "scale",
