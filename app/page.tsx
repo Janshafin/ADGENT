@@ -19,131 +19,136 @@ const fmt = (n: number) => n.toLocaleString("en-US", { style: "currency", curren
 
 export default function Home() {
   return (
-    <div className="space-y-3 pb-3">
+    <div>
       {/* Static JSON with no user input; "<" is escaped so it can never close the script tag. */}
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(JSON_LD).replace(/</g, "\\u003c") }} />
-      <HeroTile
-        tone="white"
-        headingLevel={1}
-        eyebrow="ADGENT"
-        title="Ads for the age of AI shopping."
-        subtitle="Merchants pay only when a sale settles on PayPal."
-        primary={{ href: "/judges", label: "Take the tour" }}
-        secondary={{ href: "/merchant", label: "Build a campaign" }}
-      >
-        <SaleSplit />
-      </HeroTile>
 
-      <HeroTile
-        tone="gray"
-        eyebrow="Shop with AI"
-        title="Ask. Compare. Pay with PayPal."
-        subtitle="Sponsored offers appear inside AI assistants, always labelled, always relevant first."
-        primary={{ href: "/agent", label: "Try it" }}
-        secondary={{ href: "/judges#claude-desktop", label: "Use in Claude" }}
-      >
-        <ChatShot />
-      </HeroTile>
-
-      <HeroTile
-        tone="white"
-        eyebrow="Mission Control"
-        title="Every dollar. Live."
-        subtitle="Watch each sale move from click to PayPal capture to payout, as it happens."
-        primary={{ href: "/control", label: "Open Mission Control" }}
-        secondary={{ href: "/judges#money", label: "How a sale settles" }}
-      >
-        <ControlShot />
-      </HeroTile>
-
-      <div className="mx-3 grid gap-3 md:grid-cols-2">
-        <GridTile
-          tone="gray"
-          title="Merchant Copilot"
-          subtitle="Campaigns built from your PayPal sales."
-          primary={{ href: "/merchant", label: "Learn more" }}
-          secondary={{ href: "/merchant", label: "Start" }}
-        >
-          <Stat value="36" label="lapsed buyers ready to win back" />
-        </GridTile>
-        <GridTile
-          tone="gray"
-          title="Publishers"
-          subtitle="Earn a share of every sale. Paid through PayPal."
-          primary={{ href: "/publisher", label: "Learn more" }}
-          secondary={{ href: "/demo/blog", label: "See the demo" }}
-        >
-          <Stat value="50%" label="of the ad fee goes to the site that made the sale" />
-        </GridTile>
-        <GridTile
-          tone="gray"
-          title="Honest measurement"
-          subtitle="One in ten buyers never sees each ad."
-          primary={{ href: "/control", label: "See the lift" }}
-        >
-          <Stat value="10%" label="holdout per campaign, so you see the sales ads really caused" />
-        </GridTile>
-        <GridTile
-          tone="gray"
-          title="Safe with AI"
-          subtitle="Ad text can't tell an assistant what to do."
-          primary={{ href: "/judges#trust", label: "Learn more" }}
-        >
-          <Stat value="100%" label="of payments are approved by the shopper on PayPal itself" />
-        </GridTile>
+      {/* Product local nav: title on the left, two compact pills on the right. */}
+      <div className="sticky top-11 z-30 border-b border-[var(--hairline)] bg-[var(--nav-bg)] backdrop-blur-xl supports-[not(backdrop-filter:blur(1px))]:bg-[var(--frost)]">
+        <div className="mx-auto flex h-[52px] max-w-[1024px] items-center justify-between gap-4 px-4 sm:px-6">
+          <p className="text-[19px] font-semibold leading-[1.21] tracking-[-0.01em]">ADGENT</p>
+          <div className="flex items-center gap-2.5">
+            <Link href="/judges" className="btn btn-ghost btn-xs">Take the tour</Link>
+            <Link href="/merchant" className="btn btn-primary btn-xs">Build a campaign</Link>
+          </div>
+        </div>
       </div>
+
+      {/* Hero stage: white, centred, the product shown without a frame around the section. */}
+      <section className="overflow-hidden px-4 pt-16 text-center sm:pt-20">
+        <p className="kicker rise">Pay-per-sale ads</p>
+        <h1 className="display rise rise-2 mx-auto mt-3 max-w-4xl text-[44px] sm:text-[64px] lg:text-[80px] lg:tracking-[-1.2px]">Ads for the age of AI shopping.</h1>
+        <p className="rise rise-3 mx-auto mt-5 max-w-xl text-[19px] leading-[1.42] sm:text-[21px] sm:leading-[1.38]">
+          Merchants pay only when a sale settles on PayPal.
+        </p>
+        <p className="rise rise-3 mt-5 flex flex-wrap items-center justify-center gap-x-8 gap-y-2 text-[19px] sm:text-[21px]">
+          <Link href="/agent" className="link link-more">Try the shopping agent</Link>
+          <Link href="/judges#money" className="link link-more">How a sale settles</Link>
+        </p>
+        <div className="rise rise-4 mx-auto mt-14 max-w-[880px] pb-[90px]">
+          <SaleSplit />
+        </div>
+      </section>
+
+      {/* Highlights stage: a grey band holding flat white cards. */}
+      <section className="band bg-panel px-4 py-[90px] sm:px-6">
+        <div className="mx-auto max-w-[1024px]">
+          <h2 className="display text-[32px] sm:text-[40px] sm:leading-none">Get the highlights.</h2>
+          <div className="mt-10 grid gap-5 lg:grid-cols-2">
+            <FeatureCard
+              kicker="Shop with AI"
+              title="Ask. Compare. Pay with PayPal."
+              copy="Any AI shopping agent can connect through our API or MCP. Sponsored results are always labelled, with the reason shown."
+              links={[{ href: "/agent", label: "Try it" }, { href: "/judges#claude-desktop", label: "Connect your agent" }]}
+            >
+              <ChatShot />
+            </FeatureCard>
+            <FeatureCard
+              kicker="Mission Control"
+              title="Every dollar. Live."
+              copy="Watch each sale move from click to PayPal capture to payout, as it happens."
+              links={[{ href: "/control", label: "Open Mission Control" }]}
+            >
+              <ControlShot />
+            </FeatureCard>
+          </div>
+          <div className="mt-5 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
+            <StatCard value="0" unit="$" label="upfront. A fee exists only on a captured sale." href="/merchant" cta="For merchants" />
+            <StatCard value="50" unit="%" unitAfter label="of the ad fee goes to the site that made the sale." href="/publisher" cta="For publishers" />
+            <StatCard value="10" unit="%" unitAfter label="of shoppers never see each ad, so lift is measured, not guessed." href="/control" cta="See the lift" />
+            <StatCard value="100" unit="%" unitAfter label="of payments are approved by the shopper on PayPal itself." href="/judges#trust" cta="How it stays safe" />
+          </div>
+        </div>
+      </section>
+
+      {/* Editorial block: small kicker, large left-aligned statement, body copy. */}
+      <section className="px-4 py-[90px] sm:px-6">
+        <div className="mx-auto max-w-[1024px]">
+          <p className="kicker text-muted">How it works</p>
+          <h2 className="display mt-3 max-w-3xl text-[36px] sm:text-[56px] sm:leading-[1.07] sm:tracking-[-0.28px]">
+            The merchant pays when the sale is real. Not before.
+          </h2>
+          <ol className="mt-14 grid gap-x-10 gap-y-10 border-t border-line pt-10 md:grid-cols-3">
+            {STEPS.map((s, i) => (
+              <li key={s.title}>
+                <p className="stat-num text-[14px] font-semibold text-muted">{String(i + 1).padStart(2, "0")}</p>
+                <h3 className="mt-2 text-[21px] font-semibold leading-[1.19]">{s.title}</h3>
+                <p className="mt-2 text-muted">{s.copy}</p>
+              </li>
+            ))}
+          </ol>
+          <p className="mt-12 flex flex-wrap gap-x-8 gap-y-2">
+            <Link href="/judges" className="link link-more">Take the one-minute tour</Link>
+            <Link href="/judges#real-vs-simulated" className="link link-more">See what&apos;s real in this demo</Link>
+          </p>
+        </div>
+      </section>
     </div>
   );
 }
+
+const STEPS = [
+  { title: "An agent asks.", copy: "A shopping agent sends the shopper's request to ADGENT and gets back relevant offers, each one labelled as sponsored with the reason it was chosen." },
+  { title: "The shopper approves.", copy: "ADGENT creates the PayPal order for that exact offer. The shopper approves it on PayPal, so the sale is tied to the campaign from the start." },
+  { title: "The fee follows the sale.", copy: "PayPal confirms the capture. After the refund window the merchant is charged the agreed fee, and a refund takes it back." },
+];
 
 type Action = { href: string; label: string };
 
-function Actions({ primary, secondary }: { primary: Action; secondary?: Action }) {
+function FeatureCard(props: { kicker: string; title: string; copy: string; links: Action[]; children: React.ReactNode }) {
   return (
-    <div className="mt-6 flex flex-wrap items-center justify-center gap-3.5">
-      <Link href={primary.href} className="btn btn-primary">{primary.label}</Link>
-      {secondary && <Link href={secondary.href} className="btn btn-ghost">{secondary.label}</Link>}
-    </div>
+    <article className="card flex flex-col overflow-hidden px-7 pt-10 text-center sm:px-10">
+      <p className="kicker text-muted">{props.kicker}</p>
+      <h3 className="display mt-2 text-[28px] sm:text-[36px] sm:leading-[1.1]">{props.title}</h3>
+      <p className="mx-auto mt-3 max-w-sm">{props.copy}</p>
+      <p className="mt-3 flex flex-wrap items-center justify-center gap-x-7 gap-y-1">
+        {props.links.map((l) => (
+          <Link key={l.href} href={l.href} className="link link-more">{l.label}</Link>
+        ))}
+      </p>
+      <div className="mt-10 flex flex-1 items-end justify-center">{props.children}</div>
+    </article>
   );
 }
 
-function HeroTile(props: { tone: "white" | "gray"; headingLevel?: 1 | 2; eyebrow: string; title: string; subtitle: string; primary: Action; secondary?: Action; children: React.ReactNode }) {
-  const Heading = props.headingLevel === 1 ? "h1" : "h2";
+function StatCard(props: { value: string; unit: string; unitAfter?: boolean; label: string; href: string; cta: string }) {
   return (
-    <section className={`overflow-hidden px-4 pt-14 text-center sm:pt-16 ${props.tone === "gray" ? "bg-panel" : "bg-bg"}`}>
-      <p className="text-lg font-semibold text-muted sm:text-xl">{props.eyebrow}</p>
-      <Heading className="display mx-auto mt-2 max-w-3xl text-[40px] sm:text-[56px]">{props.title}</Heading>
-      <p className="mx-auto mt-3 max-w-2xl text-xl sm:text-[24px] sm:leading-snug">{props.subtitle}</p>
-      <Actions primary={props.primary} secondary={props.secondary} />
-      <div className="mx-auto mt-12 max-w-[880px] pb-14 sm:pb-16">{props.children}</div>
-    </section>
-  );
-}
-
-function GridTile(props: { tone: "white" | "gray"; title: string; subtitle: string; primary: Action; secondary?: Action; children: React.ReactNode }) {
-  return (
-    <section className={`flex min-h-[460px] flex-col items-center px-6 pt-12 text-center ${props.tone === "gray" ? "bg-panel" : "bg-bg"}`}>
-      <h2 className="display text-[32px] sm:text-[40px]">{props.title}</h2>
-      <p className="mt-2 max-w-md text-lg sm:text-xl">{props.subtitle}</p>
-      <Actions primary={props.primary} secondary={props.secondary} />
-      <div className="flex w-full flex-1 items-center justify-center py-10">{props.children}</div>
-    </section>
-  );
-}
-
-function Stat({ value, label }: { value: string; label: string }) {
-  return (
-    <div className="max-w-xs">
-      <p className="display text-[64px] text-pp sm:text-[80px]">{value}</p>
-      <p className="mt-1 text-muted">{label}</p>
-    </div>
+    <article className="card flex flex-col p-7">
+      <p className="display stat-num text-[56px] leading-none">
+        {!props.unitAfter && <span className="text-[32px] align-[0.35em]">{props.unit}</span>}
+        {props.value}
+        {props.unitAfter && <span className="text-[32px]">{props.unit}</span>}
+      </p>
+      <p className="small mt-3 flex-1 text-muted">{props.label}</p>
+      <Link href={props.href} className="link link-more small mt-5">{props.cta}</Link>
+    </article>
   );
 }
 
 /** Product shot 1: one sale, split three ways. */
 function SaleSplit() {
   return (
-    <figure className="rounded-[28px] bg-bg p-8 text-left shadow-[0_20px_60px_-20px_rgba(0,0,0,0.18)] ring-1 ring-black/5 sm:p-10">
+    <figure className="rounded-[28px] bg-bg p-7 text-left shadow-[inset_0_0_0_1px_var(--control)] sm:p-10">
       <div className="flex flex-wrap items-baseline justify-between gap-4">
         <div>
           <p className="meta">Sold through an AI assistant</p>
@@ -184,16 +189,16 @@ function SaleSplit() {
 /** Product shot 2: the assistant conversation, drawn like a phone screen. */
 function ChatShot() {
   return (
-    <div className="mx-auto max-w-[400px] rounded-[44px] bg-[#1d1d1f] p-3 shadow-[0_30px_70px_-25px_rgba(0,0,0,0.45)]" aria-label="Example conversation with the shopping assistant">
-      <div className="space-y-3 rounded-[34px] bg-bg px-4 pb-6 pt-8 text-left text-[15px]">
+    <div className="mx-auto w-full max-w-[340px] rounded-t-[44px] bg-[#1d1d1f] p-3 pb-0" aria-label="Example conversation with the shopping assistant">
+      <div className="space-y-3 rounded-t-[34px] bg-bg px-4 pb-6 pt-8 text-left text-[15px]">
         <div className="flex justify-end">
           <p className="max-w-[80%] rounded-[20px] bg-pp px-4 py-2 text-white">Good espresso beans under $25?</p>
         </div>
         <p className="max-w-[85%] rounded-[20px] bg-panel px-4 py-2">Sponsored: this one fits, and it&apos;s 10% off.</p>
         <div className="rounded-[20px] bg-panel p-4">
-          <div className="flex items-center justify-between">
+          <div className="flex items-start justify-between gap-3">
             <span className="chip chip-sponsored">Sponsored</span>
-            <span className="meta">Bean There Coffee Roasters</span>
+            <span className="meta text-right">Bean There Coffee Roasters</span>
           </div>
           <p className="mt-3 font-semibold">Midnight Espresso Blend</p>
           <p className="meta">Dark chocolate, molasses, low acidity</p>
@@ -220,7 +225,7 @@ function ControlShot() {
     ["11:55:04", "PayPal order", "AI assistant", "$17.09", "text-pp-sky"],
   ];
   return (
-    <div className="mx-auto max-w-[820px]">
+    <div className="mx-auto w-full max-w-[820px]">
       <div className="rounded-t-[22px] bg-[#1d1d1f] p-2.5 pb-0">
         <div className="overflow-hidden rounded-t-[14px] bg-bg p-5 text-left sm:p-6">
           <div className="grid grid-cols-3 gap-3">
@@ -249,7 +254,6 @@ function ControlShot() {
           </table>
         </div>
       </div>
-      <div className="mx-auto h-3 w-[104%] -translate-x-[2%] rounded-b-[14px] bg-[#d2d2d7]" aria-hidden />
     </div>
   );
 }

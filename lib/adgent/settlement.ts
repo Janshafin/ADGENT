@@ -4,6 +4,7 @@ import type { Order } from "../db/schema";
 import { env } from "../env";
 import { sendPayouts, sendAdInvoice, type PayoutItem } from "../paypal/money-movement";
 import { record } from "./ledger";
+import { HttpError } from "../http";
 import { id, usd } from "../util";
 
 type Recipient = {
@@ -122,7 +123,7 @@ export async function settleDue(opts: { holdSeconds?: number; now?: number } = {
 export async function billMerchant(merchantId: string) {
   const d = db();
   const [merchant] = await d.select().from(schema.merchants).where(eq(schema.merchants.id, merchantId));
-  if (!merchant) throw new Error("Unknown merchant");
+  if (!merchant) throw new HttpError(404, "Unknown merchant");
   const email = merchant.paypalEmail || `${merchant.id.replace(/^m_/, "")}@merchant.adgent.example`;
 
   const due = await d

@@ -142,7 +142,7 @@ export default function MerchantPage() {
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
               <h2 className="font-semibold">AI campaign builder</h2>
-              <p className="mt-1 text-sm text-muted">Claude proposes the campaigns. The forecasts come from your data.</p>
+              <p className="mt-1 text-sm text-muted">AI proposes the campaigns. The forecasts come from your data.</p>
             </div>
             <button className="btn btn-primary" onClick={generate} disabled={thinking || !insights}>
               {thinking ? "Analyzing sales…" : proposals ? "Regenerate" : "Build my campaigns"}
@@ -159,8 +159,8 @@ export default function MerchantPage() {
             <div className="mt-5 space-y-4">
               <p className={`text-xs ${source === "claude" ? "text-muted" : "text-warn"}`}>
                 {source === "claude"
-                  ? "Strategy by Claude. Forecasts are computed from your data, so the model can't inflate them."
-                  : "Offline mode: rule-based proposals (no Claude key on this deployment). Forecasts are still computed from your data."}
+                  ? "Strategy by the AI model. Forecasts are computed from your data, so the model can't inflate them."
+                  : "Offline mode: rule-based proposals (no AI model key on this deployment). Forecasts are still computed from your data."}
               </p>
               {proposals.map((p, i) => (
                 <article key={i} className="rounded-xl border border-line bg-panel-2 p-4">
@@ -198,7 +198,7 @@ export default function MerchantPage() {
 
           {!thinking && !proposals && (
             <div className="mt-6 rounded-xl border border-dashed border-line p-8 text-center text-sm text-muted">
-              One click: Claude reviews your audiences, products and cross-merchant affinity, then drafts campaigns you only pay for when they sell.
+              One click: the AI reviews your audiences, products and cross-merchant affinity, then drafts campaigns you only pay for when they sell.
             </div>
           )}
         </div>

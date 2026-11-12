@@ -9,7 +9,7 @@ export function ModeBanner() {
   if (!s || (s.paypalMode !== "simulated" && s.ai)) return null;
   const parts = [
     s.paypalMode === "simulated" ? "payments run on a PayPal simulator, so no money moves" : null,
-    !s.ai ? "the shopping assistant runs without Claude" : null,
+    !s.ai ? "the shopping agent runs in offline mode, without an AI model" : null,
   ].filter(Boolean);
   return (
     <div className="bg-panel px-4 py-3 text-center text-sm text-text/80" role="note">

@@ -1,28 +1,36 @@
 @import "tailwindcss";
 
 /*
- * Design tokens: a single white theme in the spirit of apple.com.
- * Text contrast on --bg: --text 16.8:1, --muted 5.1:1, --pp-sky 5.6:1, --good 4.9:1, --bad 5.0:1, --gold 5.6:1.
+ * Design tokens, from the Refero "Apple iPhone Duo" style: a white gallery with grey section
+ * bands, flat shadowless surfaces, one saturated blue for links and small conversion pills.
+ *   Gallery White #fff · Studio Mist #f5f5f7 · Paper Frost #fafafc · Hairline Silver #d6d6d6
+ *   Control Gray #e6e6e8 · Ink #1d1d1f · Slate #707070 · Steel #86868b
+ *   Apple Blue #0066cc (links) · Pricing Blue #0071e3 (filled pills) · Launch Orange #b64400 (status text)
+ * Text contrast on white: Ink 16.8:1, Slate 4.9:1, Apple Blue 5.6:1, Launch Orange 5.9:1.
  */
 :root {
   --bg: #ffffff;
   --panel: #f5f5f7;
   --panel-2: #ffffff;
-  --line: #d2d2d7;
-  --hairline: rgba(0, 0, 0, 0.08);
+  --frost: #fafafc;
+  --line: #d6d6d6;
+  --control: #e6e6e8;
+  --hairline: #e6e6e8;
+  --steel: #86868b;
   --text: #1d1d1f;
-  --muted: #6e6e73;
-  --pp-blue: #0070e0;
+  --muted: #707070;
+  --pp-blue: #0071e3;
   --pp-blue-hover: #0062c4;
   --pp-navy: #003087;
   --pp-sky: #0066cc;
   --good: #1a7f37;
-  --warn: #a05a00;
+  --warn: #b64400;
   --bad: #d70015;
-  --gold: #8a5a00;
+  --gold: #b64400;
   --paypal-yellow: #ffc439;
   --nav-bg: rgba(250, 250, 252, 0.8);
   --row-alt: #fafafc;
+  --ease: cubic-bezier(0.28, 0.11, 0.32, 1);
 }
 
 
@@ -60,22 +68,35 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
-/* Display type: large, semibold, tightly tracked. */
+/* Display type: semibold (never bold), tightly tracked. Hero is 80px / 1.05 / -1.2px. */
 .display {
   font-family: var(--font-display);
   font-weight: 600;
-  letter-spacing: -0.028em;
+  letter-spacing: -0.015em;
   line-height: 1.05;
+  text-wrap: balance;
 }
+/* The 21px semibold line above a headline. */
+.kicker {
+  font-family: var(--font-display);
+  font-size: 21px;
+  font-weight: 600;
+  line-height: 1.19;
+  letter-spacing: 0.011em;
+}
+/* Small print: 14px / 1.29 / -0.224px. */
+.small { font-size: 14px; line-height: 1.29; letter-spacing: -0.016em; }
 
+/* Flat surfaces: 28px radius, no border, no shadow. Grey on white, or white on a grey band. */
 .card {
   background: var(--panel);
-  border-radius: 22px;
+  border-radius: 28px;
 }
+.band .card, .card-white { background: var(--bg); }
 
 .tile {
   background: var(--panel-2);
-  border-radius: 14px;
+  border-radius: 20px;
 }
 
 .btn {
@@ -83,30 +104,37 @@ body {
   align-items: center;
   justify-content: center;
   gap: 0.4rem;
-  border-radius: 980px;
-  padding: 0.6rem 1.25rem;
+  border-radius: 9999px;
+  padding: 0.6rem 1.35rem;
   min-height: 2.75rem;
-  font-weight: 500;
-  font-size: 1rem;
-  letter-spacing: -0.01em;
-  transition: background-color 0.15s ease, opacity 0.15s ease;
+  font-weight: 400;
+  font-size: 17px;
+  letter-spacing: -0.022em;
+  transition: background-color 0.2s var(--ease), box-shadow 0.2s var(--ease), transform 0.2s var(--ease), opacity 0.2s var(--ease);
   cursor: pointer;
 }
-.btn:disabled { opacity: 0.45; cursor: not-allowed; }
+.btn:active:not(:disabled) { transform: scale(0.97); }
+.btn:disabled { opacity: 0.42; cursor: not-allowed; }
 .btn-primary { background: var(--pp-blue); color: #fff; }
 .btn-primary:hover:not(:disabled) { background: var(--pp-blue-hover); }
 /* PayPal's own button colour, kept only for paying with PayPal. */
 .btn-gold { background: var(--paypal-yellow); color: #111; font-weight: 600; }
 .btn-gold:hover:not(:disabled) { background: #f2b320; }
-.btn-ghost { background: transparent; color: var(--pp-sky); box-shadow: inset 0 0 0 1px var(--pp-sky); }
-.btn-ghost:hover:not(:disabled) { background: color-mix(in srgb, var(--pp-sky) 8%, transparent); }
+/* Outlined pill: transparent, 1px Steel outline, Ink text. */
+.btn-ghost { background: transparent; color: var(--text); box-shadow: inset 0 0 0 1px var(--steel); }
+.btn-ghost:hover:not(:disabled) { box-shadow: inset 0 0 0 1px var(--text); background: color-mix(in srgb, var(--text) 4%, transparent); }
 .btn-quiet { background: var(--panel); color: var(--text); }
 .btn-quiet:hover:not(:disabled) { background: color-mix(in srgb, var(--text) 8%, var(--panel)); }
-.btn-sm { min-height: 2rem; padding: 0.35rem 0.9rem; font-size: 0.875rem; }
+.btn-sm { min-height: 2rem; padding: 0.35rem 0.95rem; font-size: 14px; letter-spacing: -0.016em; }
+/* Compact conversion pill, as in a product's local nav: 12px. */
+.btn-xs { min-height: 1.75rem; padding: 0.25rem 0.8rem; font-size: 12px; letter-spacing: -0.01em; }
 
 /* Text link in Apple's style: accent colour, underline on hover. */
-.link { color: var(--pp-sky); }
+.link { color: var(--pp-sky); border-radius: 10px; }
 .link:hover { text-decoration: underline; text-underline-offset: 3px; }
+/* "Learn more ›" links: the chevron nudges forward on hover. */
+.link-more::after { content: "\203A"; display: inline-block; margin-left: 0.25em; transition: transform 0.2s var(--ease); }
+.link-more:hover::after { transform: translateX(3px); }
 
 /* Suggestion buttons (interactive). */
 .pill {
@@ -123,36 +151,49 @@ button.pill:hover, label.pill:hover { background: color-mix(in srgb, var(--text)
 /* On a grey card, quiet controls sit on white so they stay visible. */
 .card .pill, .card .btn-quiet { background: var(--bg); }
 .card button.pill:hover, .card .btn-quiet:hover:not(:disabled) { background: color-mix(in srgb, var(--text) 6%, var(--bg)); }
-.select { border-radius: 12px; background: var(--panel); padding: 0.6rem 2.25rem 0.6rem 1rem; font-size: 0.9375rem; color: var(--text); }
+.select {
+  border-radius: 980px;
+  background-color: var(--bg);
+  box-shadow: inset 0 0 0 1px var(--steel);
+  padding: 0.6rem 2.25rem 0.6rem 1.1rem;
+  font-size: 15px;
+  color: var(--text);
+  transition: box-shadow 0.2s var(--ease);
+}
+.select:hover { box-shadow: inset 0 0 0 1px var(--text); }
 
 /* Functional badges only: ad disclosure, status, mode. Static metadata stays plain text. */
+/* Status labels are bare 12px semibold text, never coloured pills. */
 .chip {
   display: inline-flex;
   align-items: center;
   gap: 0.35rem;
-  border-radius: 6px;
-  padding: 0.1rem 0.45rem;
-  font-size: 0.75rem;
+  font-size: 12px;
   font-weight: 600;
-  letter-spacing: 0;
-  background: var(--panel);
-  color: var(--text);
+  line-height: 1.33;
+  letter-spacing: -0.01em;
+  color: var(--muted);
   white-space: nowrap;
 }
-.chip-sponsored { background: color-mix(in srgb, var(--paypal-yellow) 30%, transparent); color: var(--gold); }
+/* The ad disclosure, in Launch Orange so it is never missed. */
+.chip-sponsored { color: var(--warn); }
 
 .meta { font-size: 0.8125rem; color: var(--muted); letter-spacing: -0.005em; }
 
+/* Inputs: white, 1px Steel outline, fully rounded. */
 .field {
   width: 100%;
-  border-radius: 12px;
-  background: var(--panel);
-  padding: 0.7rem 1rem;
-  font-size: 1rem;
+  border-radius: 980px;
+  background: var(--bg);
+  padding: 0.7rem 1.2rem;
+  font-size: 17px;
   color: var(--text);
   outline: none;
-  box-shadow: inset 0 0 0 1px transparent;
+  box-shadow: inset 0 0 0 1px var(--steel);
+  transition: box-shadow 0.2s var(--ease);
 }
+.field::placeholder { color: var(--steel); }
+.field:hover { box-shadow: inset 0 0 0 1px var(--text); }
 .field:focus { box-shadow: inset 0 0 0 2px var(--pp-blue); }
 
 :focus-visible {
@@ -183,7 +224,22 @@ button.pill:hover, label.pill:hover { background: color-mix(in srgb, var(--text)
   border-radius: 10px;
 }
 
+/*
+ * Content settles in once, on load: a short rise. Movement only, never opacity: if a browser
+ * doesn't run the animation (Safari can leave it on its first frame), the content must still
+ * be fully visible, just 14px lower.
+ */
+@keyframes rise {
+  from { transform: translateY(14px); }
+  to { transform: none; }
+}
+.rise { animation: rise 0.7s cubic-bezier(0.28, 0.11, 0.32, 1) backwards; }
+.rise-2 { animation-delay: 0.08s; }
+.rise-3 { animation-delay: 0.16s; }
+.rise-4 { animation-delay: 0.26s; }
+
 @media (prefers-reduced-motion: reduce) {
-  .ag-row.row-new, .skeleton, .animate-ping, .animate-bounce { animation: none; }
+  .ag-row.row-new, .skeleton, .animate-ping, .animate-bounce, .rise { animation: none; }
+  .btn:active:not(:disabled) { transform: none; }
   * { scroll-behavior: auto !important; }
 }

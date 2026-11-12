@@ -141,10 +141,10 @@ export default function JudgesPage() {
 
       <section id="claude-desktop" className="mt-12 grid scroll-mt-20 gap-6 md:grid-cols-2">
         <div>
-          <h2 className="display text-3xl">Use it from Claude Desktop.</h2>
+          <h2 className="display text-3xl">Connect any MCP agent.</h2>
           <p className="mt-2 text-sm text-muted">
             The same three tools ship as an MCP server: <code>find_sponsored_offers</code>, <code>start_paypal_checkout</code>,{" "}
-            <code>confirm_purchase</code>. Add this to <code>claude_desktop_config.json</code>, then ask for espresso beans under $25.
+            <code>confirm_purchase</code>. Add this to your MCP client&apos;s config file, then ask for espresso beans under $25.
           </p>
         </div>
         <pre className="overflow-x-auto rounded-[18px] bg-panel p-5 font-mono text-[13px] leading-relaxed"><code>{MCP}</code></pre>

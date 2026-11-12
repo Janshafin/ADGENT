@@ -404,8 +404,8 @@ export default function MissionControl() {
               disabled={busy !== null}
               onClick={() =>
                 action("invoice", async () => {
-                  const r = await api<{ invoiceId?: string; totalCents?: number; message?: string }>("/api/settle/invoice", { json: { merchantId: "m_beanthere" } });
-                  return r.invoiceId ? `PayPal invoice ${r.invoiceId} sent for ${fmtUsd((r.totalCents ?? 0) / 100)}` : r.message ?? "Done";
+                  const r = await api<{ invoices: { invoiceId: string }[]; totalCents?: number; message?: string }>("/api/settle/invoice", { json: {} });
+                  return r.invoices.length ? `${r.invoices.length} PayPal invoice${r.invoices.length > 1 ? "s" : ""} sent for ${fmtUsd((r.totalCents ?? 0) / 100)}` : r.message ?? "Done";
                 })
               }
             >

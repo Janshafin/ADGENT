@@ -78,7 +78,7 @@ export default function AgentDemo() {
           <div>
             <h1 className="text-lg font-semibold tracking-tight">Shop with AI</h1>
             <p className="text-xs text-muted">
-              {status === null ? "Connecting…" : status.ai ? `Claude (${status.model}) with ADGENT sponsored offers and PayPal checkout` : "Offline mode: rule-based agent using the same offers and checkout (no Claude key)"}
+              {status === null ? "Connecting…" : status.ai ? "AI agent using ADGENT discovery and PayPal checkout" : "Offline mode: rule-based agent using the same discovery and checkout (no AI model key)"}
             </p>
           </div>
           <button type="button" className="btn btn-ghost flex-none whitespace-nowrap text-xs" onClick={reset}>New shopper</button>
@@ -125,8 +125,8 @@ export default function AgentDemo() {
           <Link href="/control" className="btn btn-quiet mt-5 w-full">Watch it in Mission Control</Link>
         </div>
         <div className="card p-5">
-          <h2 className="font-semibold">Use it from Claude Desktop</h2>
-          <p className="mt-2 text-muted">The same tools ship as an MCP server:</p>
+          <h2 className="font-semibold">Connect your own agent</h2>
+          <p className="mt-2 text-muted">The same tools ship as an MCP server, for any agent that speaks MCP:</p>
           <pre className="mt-2 overflow-x-auto rounded-lg bg-bg p-3 text-xs">npm run mcp</pre>
         </div>
       </aside>

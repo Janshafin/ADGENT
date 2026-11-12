@@ -7,7 +7,7 @@ export const SITE_URL = (process.env.APP_URL || process.env.RENDER_EXTERNAL_URL 
 export const SITE_NAME = "ADGENT";
 export const SITE_TAGLINE = "Ads for the age of AI shopping";
 export const SITE_DESCRIPTION =
-  "Pay-per-sale ads shown inside AI shopping assistants and settled end to end on PayPal. Merchants pay only when a sale settles; publishers earn a share of every sale.";
+  "Pay-per-sale product discovery that any AI shopping agent can connect to, settled end to end on PayPal. Merchants pay only when a sale settles; publishers earn a share of every sale.";
 
 /** Pages worth indexing, with how often they change. */
 export const PUBLIC_PAGES = [
